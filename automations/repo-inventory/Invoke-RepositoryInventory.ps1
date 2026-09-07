@@ -363,7 +363,35 @@ $detail = [ordered]@{
         truncated    = [bool] $listing.Truncated
     }
 
-    token           = if ($tokenShape) {
+    # 'authentication', NOT 'token', and the name is the fix rather than a preference.
+    #
+    # Remove-SensitiveValue redacts by property NAME, and 'token' is one of the fragments
+    # it matches - so this whole block used to be replaced by the string "[redacted]"
+    # before the report was written. Not a block with redacted fields: the object was
+    # gone. Verified in a real artefact, where detail.token was the four-character
+    # string while listing, rateLimit and finding beside it survived intact.
+    #
+    # So the report promised the days remaining on the token - security-model.md says
+    # "inventory reports the days remaining" - and then deleted the only place it was
+    # recorded. The console warning is transient; the report is what gets attached to a
+    # ticket.
+    #
+    # This module documents having made exactly this mistake once before: an unanchored
+    # 'pat' rule redacted every Area Path out of every report, and the comment above
+    # $script:SensitiveNameSegment concludes "Redaction that destroys evidence is not
+    # failing safe; it is failing quietly, which is worse." It happened again, two
+    # fragments further down the same list.
+    #
+    # 'authentication' is the one candidate that survives - measured, not assumed:
+    # token, tokenShape, tokenInfo, credentialShape, auth and authorization are all
+    # destroyed. The fragment list holds 'authorization' but not 'authentication', and
+    # 'auth' matches only as a whole delimited segment. None of the four inner field
+    # names match either, which is why they are worth keeping here rather than flattening
+    # into a string.
+    #
+    # Nothing here is secret. isClassic is a fact about the token's TYPE, scope lists
+    # names of permissions, and the two expiry fields are dates. The value never appears.
+    authentication  = if ($tokenShape) {
         [ordered]@{
             isClassic       = [bool] $tokenShape.IsClassic
             scope           = @($tokenShape.Scope)
