@@ -10,6 +10,18 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- `Invoke-RepositoryInventory.ps1` no longer prints the seven environment variable names
+  that `Import-GitHubAsCodeEnvironment` returns. The function returns them by design; the
+  call site did not capture the result, and in PowerShell an uncaptured return value is
+  written to the output stream rather than discarded, so every authenticated run ended by
+  emitting them after its report paths. Names only, never values.
+- `Write-PlanSummary` no longer closes an `inventory` run with "the live state already
+  matches the declaration". `inventory` does not read the declaration at all, so that
+  sentence announced a comparison that never ran - and contradicted the per-operation
+  reasons printed in the same run. `plan`, which does compare, is unchanged.
+
 ## [0.1.0] - 2026-09-07
 
 First release. Phase 1: the read-only account inventory.
