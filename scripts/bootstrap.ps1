@@ -46,8 +46,15 @@ function Write-BootstrapLog {
         Text to write.
     #>
     [CmdletBinding()]
-    param([Parameter(Mandatory)] [string] $Message)
+    param(
+        [Parameter(Mandatory)] [string] $Message,
+        [ValidateSet('info', 'warning')] [string] $Level = 'info'
+    )
 
+    if ($Level -eq 'warning') {
+        Write-Warning "[bootstrap] $Message"
+        return
+    }
     Write-Information "[bootstrap] $Message" -InformationAction Continue
 }
 
@@ -127,6 +134,47 @@ else {
     }
     elseif (Test-Path -LiteralPath $envTemplatePath) {
         Copy-Item -LiteralPath $envTemplatePath -Destination $envPath
+
+        # Restrict the new file to the current user, best-effort.
+        #
+        # .env is about to hold a personal access token, and Copy-Item leaves it with
+        # whatever the directory grants. Under a user profile on Windows that is already
+        # restrictive; in C:\Pipelines, at the root of a data disk, or on a share, it is
+        # not - and a build agent checkout is exactly where a clone ends up outside a
+        # profile.
+        #
+        # Best-effort on purpose: this is a convenience script, and a filesystem that
+        # will not take an ACL - a mapped drive, a container mount, a non-Windows host -
+        # must not stop somebody setting the repository up. It says which of the two
+        # happened rather than staying silent, because "the file is protected" and "the
+        # file inherits the directory" call for different care with where the clone
+        # lives.
+        # icacls, not Get-Acl/Set-Acl. Both express the same intent, and the .NET path
+        # is the more idiomatic one - but writing a security descriptor through it needs
+        # the account's domain to be reachable, and it fails with "The trust
+        # relationship between this workstation and the primary domain failed" on a
+        # domain-joined machine that is offline or has a broken trust. Measured on the
+        # machine this was written on, where Set-Acl fails and icacls succeeds against
+        # the same file. A hardening step that only works on the network is not
+        # hardening.
+        #
+        # /inheritance:r drops the inherited entries; /grant:r replaces rather than
+        # adds; the SID is used with a * prefix so no name resolution is needed, which
+        # is the other half of the same problem.
+        $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+        $icaclsOutput = & icacls $envPath /inheritance:r /grant:r "*${identity}:(F)" 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-BootstrapLog 'restricted .env to the current user only.'
+        }
+        else {
+            # Best-effort on purpose. This is a convenience script, and a filesystem
+            # that will not take an ACL - a mapped drive, a container mount, a
+            # non-Windows host - must not stop somebody setting the repository up. It
+            # says which of the two happened rather than staying silent, because "the
+            # file is protected" and "the file inherits the directory" call for
+            # different care about where the clone lives.
+            Write-BootstrapLog "could not restrict permissions on .env ($($icaclsOutput -join ' ')). It inherits the directory's permissions, so check who can read them if this clone is not inside your user profile." -Level warning
+        }
         Write-BootstrapLog 'created .env from .env.example. Fill in GITHUB_OWNER and GITHUB_TOKEN_READ; that is everything repo-inventory needs. The write tokens stay empty until phase 3, and .env.example says which permissions each one wants.'
     }
     else {

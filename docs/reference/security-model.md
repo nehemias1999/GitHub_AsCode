@@ -98,6 +98,25 @@ Four layers, at different points:
    rule cannot see a token in a URL or in an error message, and a value-based rule cannot
    know that a field called `credentialsId` is only a reference.
 
+## Where `.env` lives
+
+`bootstrap.ps1` restricts the new `.env` to the current user - inheritance dropped, one
+access rule - and says so in its output.
+
+It is best-effort: a filesystem that will not take an ACL must not stop somebody setting
+the repository up, so a failure warns and the run continues. The warning is the point,
+because "the file is protected" and "the file inherits the directory" call for different
+care about where the clone lives.
+
+Under a user profile the inherited permissions are already restrictive. At the root of a
+data disk, in a shared directory, or on a network share they are not - and a build agent
+checkout is exactly where a clone ends up outside a profile.
+
+Done with `icacls` rather than `Set-Acl`, and that is a measured choice: writing a
+security descriptor through .NET needs the account's domain to be reachable, and it fails
+with a trust-relationship error on a domain-joined machine that is offline. A hardening
+step that only works on the network is not hardening.
+
 ## The sensitive data gate
 
 `scripts/Test-NoSensitiveData.ps1` runs as part of the quality gate, in two layers:
