@@ -1,0 +1,24 @@
+# Normalise line endings in the repository, so a clone is the same on any platform.
+# Without this, git's autocrlf setting decides what a checkout looks like, and the
+# same file differs between a Windows and a Linux working copy.
+#
+# It matters most for tests/fixtures/**, pinned below: several fixtures are compared
+# as text, and a fixture whose endings change between checkouts makes a test pass on
+# one machine and fail on another for a reason nothing in the diff shows.
+#
+# (The ported version of this file justified itself by citing Get-TextFingerprint and
+# a Jenkinsfile read from a commit. Neither exists here - that function lives in
+# Scm.Git, which this repository does not port - so the reason has been replaced with
+# one that is true of this codebase.)
+* text=auto eol=lf
+
+# PowerShell reads these fine with either ending; LF keeps diffs clean.
+*.ps1  text eol=lf
+*.psm1 text eol=lf
+*.psd1 text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.xml  text eol=lf
+
+# Fixtures are compared byte for byte by the tests, so their endings are pinned.
+tests/fixtures/** text eol=lf

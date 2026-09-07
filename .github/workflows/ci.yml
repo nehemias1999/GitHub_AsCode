@@ -1,0 +1,94 @@
+# The quality gate, run automatically.
+#
+# It runs scripts/Invoke-Tests.ps1 rather than reimplementing the checks. A second
+# definition of "pass" is the thing being avoided: four documents claim that CI runs
+# the same command a person runs locally, and this is what makes those sentences true.
+name: quality gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Read-only. Nothing in this repository writes to GitHub, and the workflow token has
+# no reason to be able to either - see docs/adr/0001-write-boundary.md.
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both engines, because the declared support floor is Windows PowerShell 5.1
+        # and the code carries real 5.1-specific workarounds: the reduced schema
+        # validator, ConvertTo-Json depth, and several places that handle an empty
+        # array unwrapping to $null.
+        #
+        # This matrix is the ONLY place PowerShell 7 gets exercised. The workstation
+        # this repository is developed on has 5.1 only, so a local run tests the floor
+        # and nothing else. Removing pwsh here would leave half the declared support
+        # completely unexercised. See docs/process/testing-strategy.md.
+        shell: [powershell, pwsh]
+    name: ${{ matrix.shell }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the test-only dependencies
+        shell: ${{ matrix.shell }}
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          # Upper bound deliberate. Pester 6 has shipped, and -MinimumVersion alone
+          # would install it - running the suite on an untested major while reporting
+          # the result as if it were tested. Invoke-Tests.ps1 falls back to a newer
+          # major with a warning if it has to; CI should not have to.
+          Install-Module Pester -MinimumVersion 5.5 -MaximumVersion 5.99.99 -Scope CurrentUser -Force -SkipPublisherCheck
+          Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
+
+      - name: Seed the deny-term layer of the secret gate
+        shell: ${{ matrix.shell }}
+        env:
+          SENSITIVE_TERMS: ${{ secrets.SENSITIVE_TERMS }}
+        run: |
+          # The gate has two layers, and the second reads .local/sensitive-terms.txt,
+          # which is excluded from version control - so it can never simply be present
+          # here. Terms are themselves sensitive, hence a secret rather than a
+          # committed file. Optional on purpose: a fork with no secret still runs the
+          # structural layer, and the gate says which layers answered rather than
+          # reporting an unqualified pass.
+          New-Item -ItemType Directory -Force -Path .local | Out-Null
+          if ($env:SENSITIVE_TERMS) {
+            [System.IO.File]::WriteAllText("$PWD/.local/sensitive-terms.txt", $env:SENSITIVE_TERMS)
+            Write-Output 'Deny-term layer seeded from the SENSITIVE_TERMS secret.'
+            Add-Content -Path $env:GITHUB_ENV -Value 'REQUIRE_DENY_TERMS=1'
+          }
+          else {
+            Write-Output 'No SENSITIVE_TERMS secret set: the gate will run its structural rules only, and will say so.'
+          }
+
+      - name: Run the quality gate
+        shell: ${{ matrix.shell }}
+        run: |
+          # One command, the same one a person runs locally.
+          if ($env:REQUIRE_DENY_TERMS) {
+            ./scripts/Invoke-Tests.ps1 -RequireDenyTerms
+          }
+          else {
+            ./scripts/Invoke-Tests.ps1
+          }
+
+      - name: Prove the automation still validates offline
+        shell: ${{ matrix.shell }}
+        run: |
+          # validate needs no network and no credential, so it is the one end-to-end
+          # path that can run here. It also proves the shipped template parses under
+          # this engine, which is where the reduced 5.1 schema validator differs from
+          # Test-Json on 7.
+          #
+          # There is deliberately no step that contacts the API. Every command past
+          # validate needs a token, and a token in CI would be a credential with
+          # account-wide read access sitting in an environment that runs code from
+          # pull requests.
+          ./automations/repo-inventory/Invoke-RepositoryInventory.ps1 -Command validate -ConfigurationPath ./automations/repo-inventory/config/repositories.example.json

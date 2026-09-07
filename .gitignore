@@ -1,0 +1,25 @@
+# Local environment files. Never commit a real secret value.
+.env
+.env.*
+!.env.example
+
+# Workstation scratch space: drafts, exports, credential files handed over out of band.
+.local/
+
+# Reproducible run outputs (inventories, plans, reports, receipts, logs).
+artifacts/
+
+# Active configuration created by RENAMING a versioned template. The .example.json
+# files beside these are committed; these are not, because they name real
+# repositories and, once the account has private ones, the fact that a given
+# private repository exists is itself something not to publish.
+automations/*/config/repositories.json
+automations/*/config/standards.json
+automations/*/config/metadata.json
+automations/*/config/protection.json
+automations/*/config/board.json
+
+# Misc
+*.log
+*.tmp
+*.bak
