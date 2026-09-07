@@ -104,6 +104,81 @@ function Format-GitHubTopicName {
     return $normalized
 }
 
+function Format-GitHubRepositoryName {
+    <#
+    .SYNOPSIS
+        Validates a declared repository name, and returns it unchanged.
+
+    .DESCRIPTION
+        The schema already constrains this with a pattern - and on Windows PowerShell
+        5.1 that pattern is not enforced. There is no Test-Json -Schema on 5.1, so
+        GitHubAsCode.Configuration falls back to a reduced validator that covers type,
+        required, properties, additionalProperties, items, enum, const and $ref, and
+        deliberately does not cover pattern, minLength or the numeric bounds. Its own
+        help says so.
+
+        5.1 is the declared support floor, so on the engine most likely to be running
+        this, the only check on a repository name is this function.
+
+        Today the consequence is bounded: a declared name is compared against hashtable
+        keys and printed, never used to build a URL. The two request paths are the
+        literals 'user/repos' and 'user'. But phase 3 builds
+        repos/{owner}/{repo}/topics, and at that point the name becomes a path segment -
+        and New-HttpUri escapes the query, not the path. What would stand between '../..'
+        and a request is exactly this.
+
+        So the name is validated in CODE, before it can matter, for the same reason
+        Format-GitHubTopicName exists: the entry point calls both from its invariants
+        loop, so an unusable value fails offline in a second rather than as a 422 or
+        something stranger halfway through a run.
+
+        Returns the name unchanged rather than normalising it. A repository name is
+        case-sensitive on the way in and GitHub preserves it, so there is nothing safe
+        to normalise - unlike a topic, which the API lowercases and which therefore has
+        to be lowercased here to keep the comparison idempotent.
+
+    .PARAMETER Name
+        The declared repository name.
+
+    .EXAMPLE
+        Format-GitHubRepositoryName -Name 'EXAMPLE-service'
+
+    .OUTPUTS
+        The name, unchanged.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)] [AllowEmptyString()] [string] $Name
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Name)) {
+        throw 'A repository name cannot be empty.'
+    }
+    if ($Name.Length -gt 100) {
+        throw "The repository name is $($Name.Length) characters. GitHub allows at most 100."
+    }
+    # GitHub accepts letters, digits, hyphen, underscore and dot. Notably NOT the
+    # slash - a value containing one is either owner/repo, which is the single most
+    # common mistake in this field, or a traversal attempt.
+    if ($Name -notmatch '^[A-Za-z0-9._-]+$') {
+        $reason = if ($Name.Contains('/')) {
+            "it contains '/', so it is probably owner/repo - declare the repository name alone, because the owner comes from the environment"
+        }
+        else {
+            'allowed characters are letters, digits, hyphen, underscore and dot'
+        }
+        throw "The repository name '$Name' is not a valid GitHub repository name: $reason."
+    }
+    # '.' and '..' are valid against the character class above and are path traversal
+    # once a name becomes a URL segment.
+    if ($Name -eq '.' -or $Name -eq '..') {
+        throw "The repository name '$Name' is a relative path segment, not a name."
+    }
+
+    return $Name
+}
+
 function Get-GitHubTopicUnion {
     <#
     .SYNOPSIS
@@ -398,6 +473,7 @@ function Get-GitHubUndeclaredStatus {
 Export-ModuleMember -Function @(
     'Get-GitHubSnapshotProperty',
     'Format-GitHubTopicName',
+    'Format-GitHubRepositoryName',
     'Get-GitHubTopicUnion',
     'New-GitHubRepositorySnapshot',
     'Get-GitHubRepositoryStatus',

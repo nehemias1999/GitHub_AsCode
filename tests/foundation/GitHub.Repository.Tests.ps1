@@ -310,3 +310,50 @@ Describe 'Get-GitHubUndeclaredStatus' {
         (Get-GitHubUndeclaredStatus -Snapshot $private).Reason | Should -Match 'private'
     }
 }
+
+Describe 'Format-GitHubRepositoryName' {
+
+    It 'rejects owner/repo, which is the most common mistake in this field' {
+        # The schema forbids a slash with a pattern, and on Windows PowerShell 5.1 that
+        # pattern is not enforced: there is no Test-Json -Schema, so the reduced
+        # validator runs and it does not cover `pattern`. 5.1 is the declared support
+        # floor, so on the engine most likely to be running this, THIS is the only check.
+        $message = ''
+        try { Format-GitHubRepositoryName -Name 'EXAMPLE-owner/EXAMPLE-repo' | Out-Null }
+        catch { $message = $_.Exception.Message }
+
+        $message | Should -Match 'owner/repo'
+        $message | Should -Match 'owner comes from the environment'
+    }
+
+    It 'rejects a relative path segment' {
+        # '.' and '..' pass the character class - they are made of allowed characters -
+        # and are path traversal the moment a name becomes a URL segment. Phase 3 builds
+        # repos/{owner}/{repo}/topics, and New-HttpUri escapes the query, not the path.
+        foreach ($name in @('.', '..')) {
+            { Format-GitHubRepositoryName -Name $name } |
+                Should -Throw -ExpectedMessage '*relative path segment*' -Because "$name must not be usable as a name"
+        }
+    }
+
+    It 'rejects a name GitHub would not store' {
+        foreach ($name in @('has space', 'x#y', 'a?b', '', '   ')) {
+            { Format-GitHubRepositoryName -Name $name } |
+                Should -Throw -Because "'$name' is not a valid repository name"
+        }
+    }
+
+    It 'rejects a name longer than the 100 characters GitHub allows' {
+        { Format-GitHubRepositoryName -Name ('a' * 101) } | Should -Throw -ExpectedMessage '*at most 100*'
+    }
+
+    It 'accepts the forms that are legal, and changes nothing' {
+        # Returned unchanged rather than normalised. A repository name is case-sensitive
+        # on the way in and GitHub preserves it, so there is nothing safe to normalise -
+        # unlike a topic, which the API lowercases and which therefore must be lowercased
+        # here to keep the comparison idempotent.
+        foreach ($name in @('EXAMPLE-service', 'a.b_c-1', 'MixedCase', ('a' * 100))) {
+            Format-GitHubRepositoryName -Name $name | Should -Be $name
+        }
+    }
+}

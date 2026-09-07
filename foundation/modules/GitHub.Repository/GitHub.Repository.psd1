@@ -13,6 +13,7 @@
     FunctionsToExport = @(
         'Get-GitHubSnapshotProperty',
         'Format-GitHubTopicName',
+        'Format-GitHubRepositoryName',
         'Get-GitHubTopicUnion',
         'New-GitHubRepositorySnapshot',
         'Get-GitHubRepositoryStatus',

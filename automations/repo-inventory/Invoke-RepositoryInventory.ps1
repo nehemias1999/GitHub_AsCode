@@ -173,6 +173,18 @@ foreach ($repository in $declaration.repositories) {
         $null = $validationProblem.Add("Repository '$($repository.name)' declares class '$($repository.class)', which is not defined. Defined classes: $($knownClass -join ', ').")
     }
 
+    # Validated in code, not only by the schema. On PowerShell 5.1 - the declared
+    # support floor - there is no Test-Json -Schema, so the reduced validator runs and
+    # it does not enforce `pattern`. The name's shape is therefore unchecked on the
+    # engine most likely to be running this, and phase 3 will turn a declared name into
+    # a URL path segment.
+    try {
+        $null = Format-GitHubRepositoryName -Name $repository.name
+    }
+    catch {
+        $null = $validationProblem.Add("Repository declaration: $($_.Exception.Message)")
+    }
+
     # Format-GitHubTopicName is the same function the payload is built from, so a
     # topic that cannot be stored fails here rather than as a 422 mid-run.
     if ($repository.PSObject.Properties['topics'] -and $repository.topics) {
