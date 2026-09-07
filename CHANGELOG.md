@@ -45,7 +45,7 @@ First release. Phase 1: the read-only account inventory.
 
 ### Changed, relative to the inherited code
 
-Five defects were found in the ported `Jenkins_AsCode` code and fixed here. Each is
+Six defects were found in the ported `Jenkins_AsCode` code and fixed here. Each is
 noted in a comment at the site, so the difference between the two repositories reads as
 deliberate rather than as drift.
 
@@ -79,6 +79,17 @@ deliberate rather than as drift.
   two test suites as the reason for the column-0 brace rule, and only one of them
   exists here. The constraint is real, so the citations were corrected rather than
   dropped: a rule with no demonstrable reason is the first one somebody tidies away.
+- **The CI workflow now starts at all.** The ported file set
+  `shell: ${{ matrix.shell }}` on each step. GitHub validates a step's `shell` when it
+  parses the workflow, before any expression is evaluated, so an expression there is not
+  a shell name and the run fails at startup: zero seconds, no job, no log, and the run
+  labelled by its file path instead of its name. **This is why `Jenkins_AsCode` has
+  never had a green CI run** - every one of its runs failed this way while four of its
+  documents claimed the gate ran automatically. A startup failure looks like nothing
+  rather than like a failure, which is how it went unnoticed. The shell is now a
+  job-level `defaults.run.shell`, which is evaluated later and does accept the matrix
+  context; verified empirically, the two legs report `engine=Desktop version=5.1.26100`
+  and `engine=Core version=7.6.5`.
 - **A dead condition removed from the entry point.** The token-shape probe was guarded
   by "if any repository came back", which is always true once the listing has
   succeeded. It read as caution and decided nothing - and the one case it appeared to

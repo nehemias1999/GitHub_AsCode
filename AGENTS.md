@@ -114,7 +114,7 @@ where one exists (`#42 read the account listing from the authenticated endpoint`
 
 `Jenkins_AsCode` and `ADO_AsCode` are the source of the foundation, the command ladder
 and the automation contract. Port from them rather than reinventing - but **port
-critically**. Phase 1 found five real defects in the inherited code, and the pattern
+critically**. Phase 1 found six real defects in the inherited code, and the pattern
 running through them is worth naming: **a ported justification stops being evidence.**
 
 - `Invoke-Tests.ps1` selected the highest installed Pester and imported it with
@@ -129,6 +129,11 @@ running through them is worth naming: **a ported justification stops being evide
   off on another codebase's evidence.
 - `.gitattributes` and `.editorconfig` justified real constraints by citing functions
   and test suites that do not exist in this repository.
+- `.github/workflows/ci.yml` set `shell: ${{ matrix.shell }}` on each step, which fails
+  at workflow-parse time. `Jenkins_AsCode` has therefore **never had a green CI run**,
+  while four of its documents state that the gate runs automatically. Worth dwelling on:
+  a startup failure yields no job and no log, so it renders as nothing rather than as a
+  failure. If you claim a check runs, go and look at a passing run of it.
 
-All five were fixed here. If you fix something inherited, say so in the comment, so the next
+All six were fixed here. If you fix something inherited, say so in the comment, so the next
 reader knows the two repositories deliberately differ rather than accidentally drifted.
