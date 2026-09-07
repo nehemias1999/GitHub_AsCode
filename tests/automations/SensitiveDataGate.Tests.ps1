@@ -126,3 +126,104 @@ Describe 'The gate covers the whole repository' {
         }
     }
 }
+
+Describe 'The gate actually finds a secret' {
+
+    # Until this block existed, every case in this file asserted that the gate PASSES,
+    # or checked a line in its summary. Not one planted a secret and required the gate
+    # to find it - so `$rules = @()` would have left the whole suite green, and so did
+    # the real defect these cases now cover: the gate read only an allowlist of text
+    # extensions, which meant .pem, .netrc, .sh and the rest were never opened at all.
+    #
+    # Measured before the fix, against exactly the files below: "no findings across
+    # 0 file(s)", exit 0. Not a missed rule - it read nothing and reported success.
+
+    BeforeEach {
+        $script:Probe = Join-Path ([System.IO.Path]::GetTempPath()) ("gate-probe-" + [guid]::NewGuid())
+        New-Item -ItemType Directory -Force -Path $script:Probe | Out-Null
+
+        # Assembled from parts, so this test file is not itself credential-shaped - the
+        # same reason as in tests/foundation/GitHubAsCode.Secrets.Tests.ps1.
+        $script:Token = ('gh' + 'p_') + ('EXAMPLE' * 5)
+    }
+
+    AfterEach {
+        Remove-Assertedly -Path $script:Probe -Recurse
+    }
+
+    It 'finds a private key block in a file whose extension it once ignored' {
+        # The PrivateKeyBlock rule existed all along. It could not fire, because .pem
+        # was not on the allowlist - so the rule guarding the most obviously fatal
+        # thing to commit had never run against the file type that carries it.
+        # Assembled, like the token above: a literal key header in this file is itself
+        # a finding, and the gate is right to say so. It caught the first version of
+        # this test, which is the guard working rather than an obstacle.
+        $fence = ('-' * 5) + 'BEGIN OPENSSH PRIVATE KEY' + ('-' * 5)
+        $content = $fence + [Environment]::NewLine +
+                   'b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAA' + [Environment]::NewLine +
+                   (($fence -replace 'BEGIN', 'END'))
+        Set-Content -LiteralPath (Join-Path $script:Probe 'deploy.pem') -Value $content -Encoding utf8
+
+        $output = & (Get-PowerShellHostPath) -NoProfile -ExecutionPolicy Bypass -File $script:GatePath -Path $script:Probe 2>&1
+
+        $LASTEXITCODE | Should -Be 1 -Because ($output -join [Environment]::NewLine)
+        ($output -join "`n") | Should -Match 'PrivateKeyBlock'
+    }
+
+    It 'finds a token in a credential file with no extension' {
+        # .netrc and .npmrc have no extension, and the old rule for extensionless files
+        # was an allowlist of five friendly names - LICENSE, README, CHANGELOG, AGENTS,
+        # Dockerfile - so every extensionless file that actually holds a credential was
+        # excluded by name.
+        Set-Content -LiteralPath (Join-Path $script:Probe '.netrc') -Value "machine api.example.com login someone password $script:Token" -Encoding utf8
+
+        $output = & (Get-PowerShellHostPath) -NoProfile -ExecutionPolicy Bypass -File $script:GatePath -Path $script:Probe 2>&1
+
+        $LASTEXITCODE | Should -Be 1 -Because ($output -join [Environment]::NewLine)
+        ($output -join "`n") | Should -Match 'GitHubToken'
+    }
+
+    It 'finds a token in a shell script' {
+        Set-Content -LiteralPath (Join-Path $script:Probe 'deploy.sh') -Value "export GITHUB_TOKEN=$script:Token" -Encoding utf8
+
+        $output = & (Get-PowerShellHostPath) -NoProfile -ExecutionPolicy Bypass -File $script:GatePath -Path $script:Probe 2>&1
+
+        $LASTEXITCODE | Should -Be 1 -Because ($output -join [Environment]::NewLine)
+    }
+
+    It 'reports a file it could not read instead of counting it as clean' {
+        # The other half of the same defect. The loop read with -ErrorAction
+        # SilentlyContinue and skipped on empty content, having already counted the file
+        # - so an unreadable file was reported as scanned and clean.
+        #
+        # A read failure is hard to provoke portably, so this asserts the mechanism that
+        # replaced it: the count in the summary is of files actually READ, not of files
+        # considered. A zero-byte file is opened successfully and has nothing in it, so
+        # it must not be counted.
+        #
+        # WriteAllText with an empty string, not Set-Content -Value '' - the latter
+        # writes a newline, so the file is not empty and is legitimately counted. The
+        # first version of this test asserted otherwise and was simply wrong about the
+        # cmdlet.
+        [System.IO.File]::WriteAllText((Join-Path $script:Probe 'zero-one.txt'), '')
+        [System.IO.File]::WriteAllText((Join-Path $script:Probe 'zero-two.txt'), '')
+
+        $output = & (Get-PowerShellHostPath) -NoProfile -ExecutionPolicy Bypass -File $script:GatePath -Path $script:Probe 2>&1
+
+        $LASTEXITCODE | Should -Be 0 -Because ($output -join [Environment]::NewLine)
+        ($output -join "`n") | Should -Match 'across 0 file'
+    }
+
+    It 'does not read a binary file, whatever the rules would have matched in it' {
+        # The NUL-byte check was written as a backstop for "a binary that slips through
+        # the allowlist". With the allowlist inverted it is the actual mechanism, so it
+        # is worth a test of its own: bytes that happen to spell a token must not be
+        # reported out of a file nothing can read as text.
+        $bytes = [byte[]] (0, 1, 2, 0) + [Text.Encoding]::ASCII.GetBytes($script:Token) + [byte[]] (0, 0)
+        [System.IO.File]::WriteAllBytes((Join-Path $script:Probe 'blob.dat'), $bytes)
+
+        $output = & (Get-PowerShellHostPath) -NoProfile -ExecutionPolicy Bypass -File $script:GatePath -Path $script:Probe 2>&1
+
+        $LASTEXITCODE | Should -Be 0 -Because ($output -join [Environment]::NewLine)
+    }
+}

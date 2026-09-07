@@ -71,11 +71,30 @@ $Path = (Resolve-Path -LiteralPath $Path).Path
 # Directories that either are not ours to police or hold intentionally local data.
 $excludedDirectories = @('.git', '.local', 'artifacts', 'node_modules')
 
-# Extensions worth reading. Anything else is treated as opaque and skipped, and a
-# binary file that slips through is caught by the NUL-byte check below.
-$textExtensions = @(
-    '.ps1', '.psm1', '.psd1', '.md', '.json', '.yml', '.yaml', '.csv', '.txt',
-    '.example', '.env', '.gitignore', '.gitattributes', '.editorconfig', '.xml', '.config'
+# Extensions NOT worth reading, because they are binary. Everything else is read.
+#
+# This list used to be the other way round - an allowlist of text extensions - and that
+# is a hole rather than an economy. A gate that reads only what it recognises does not
+# scan .pem, .key, .p12, id_rsa, .netrc, .npmrc, .sh, .tfvars or .conf, so the
+# PrivateKeyBlock rule below could never fire against the files most likely to contain
+# a private key block. It reported "no findings" and meant "no findings in the files I
+# chose to open".
+#
+# That matters more for a template than for a private tool: the files somebody adds
+# while adapting this - a deploy key, a service account, a shell script with a token -
+# are exactly the ones the allowlist omitted.
+#
+# Inverting it costs nothing, because the NUL-byte check further down already
+# identifies a binary whatever its extension, and it always did. That check was written
+# as a backstop for "a binary file that slips through"; with the allowlist gone it
+# becomes the actual mechanism, which is where the reliable test belongs.
+$binaryExtensions = @(
+    '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico', '.webp', '.svgz',
+    '.zip', '.gz', '.tgz', '.7z', '.rar', '.nupkg',
+    '.exe', '.dll', '.pdb', '.so', '.dylib', '.msi', '.cab',
+    '.pdf', '.docx', '.xlsx', '.pptx',
+    '.woff', '.woff2', '.ttf', '.eot', '.otf',
+    '.mp3', '.mp4', '.avi', '.mov', '.wav'
 )
 
 # Placeholder identities this repository uses on purpose. Keep the list short:
@@ -342,9 +361,12 @@ function Get-ScannableFile {
         }
         if ($inExcluded) { return $false }
 
+        # Read it unless the extension says it is binary. A file with no extension is
+        # read too: LICENSE and Dockerfile are the innocent cases, but id_rsa, .netrc
+        # and .npmrc are the ones that matter, and the previous allowlist of five known
+        # names excluded every one of them.
         $extension = $_.Extension.ToLowerInvariant()
-        if ($extension) { return ($textExtensions -contains $extension) }
-        return ($_.Name -match '^(?:LICENSE|README|CHANGELOG|AGENTS|Dockerfile)$')
+        return (-not ($binaryExtensions -contains $extension))
     })
 
     # Anything git ignores is out of scope: this gate is about what reaches a commit.
@@ -380,14 +402,54 @@ else {
 
 $findings = New-Object System.Collections.Generic.List[object]
 $scanned = 0
+$skippedBinary = 0
+$unreadable = New-Object System.Collections.Generic.List[string]
 
 foreach ($file in Get-ScannableFile -Root $Path) {
-    $scanned++
-    $content = Get-Content -LiteralPath $file.FullName -Raw -ErrorAction SilentlyContinue
-    if (-not $content) { continue }
-    if ($content.IndexOf([char]0) -ge 0) { continue }   # binary despite the extension
+    $relativePathForReport = ($file.FullName.Substring($Path.Length).TrimStart('\', '/')) -replace '\\', '/'
 
-    $relativePath = ($file.FullName.Substring($Path.Length).TrimStart('\', '/')) -replace '\\', '/'
+    # Unreadable is a FINDING, not a skip.
+    #
+    # This loop used to read with -ErrorAction SilentlyContinue and then `continue` on
+    # empty content, having already incremented $scanned. So a file locked by another
+    # process, or one whose ACL denies a read, was counted as clean - and the gate
+    # printed "no findings across N file(s)" having opened fewer than N. The one guard
+    # the whole secret-hygiene claim of this repository rests on failed in the
+    # insecure direction, and silently, which is what this file's own comment about
+    # redaction calls worse than failing.
+    #
+    # It is also indistinguishable from a genuinely empty file, which is why the two
+    # are now separated: empty is fine and uninteresting, unreadable is reported.
+    $content = $null
+    $readFailure = ''
+    try {
+        $content = Get-Content -LiteralPath $file.FullName -Raw -ErrorAction Stop
+    }
+    catch {
+        $readFailure = $_.Exception.Message
+    }
+
+    if ($readFailure) {
+        $unreadable.Add($relativePathForReport)
+        $null = $findings.Add([pscustomobject]@{
+            Rule = 'UnreadableFile'
+            File = $relativePathForReport
+            Line = 0
+            Match = 'could not be read, so it was not scanned'
+        })
+        continue
+    }
+
+    # Binary despite the extension, or genuinely empty. Neither is a finding, but they
+    # are not "scanned" either, so neither counts towards the total.
+    if ($null -eq $content -or $content.Length -eq 0) { continue }
+    if ($content.IndexOf([char]0) -ge 0) { $skippedBinary++; continue }
+
+    # Counted here, after the file has actually been read, so the number in the summary
+    # is a count of files examined rather than of files considered.
+    $scanned++
+
+    $relativePath = $relativePathForReport
     $lines = $content -split "\r?\n"
 
     # JSON escapes a backslash as two, so an ordinary path such as
