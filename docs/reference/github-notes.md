@@ -10,7 +10,19 @@ is not.
 
 Each row is the same shape: what the API does, what a reasonable person would write,
 what that destroys, and the mitigation. Where a row says *measured*, it was observed
-against a live account rather than read in the documentation.
+against a live API rather than read in the documentation.
+
+**Read the Mitigation column with the phase in mind.** A mitigation that opens with a
+phase - **Phase 3**, **Phase 4**, **Phase 5** - describes code that **does not exist
+yet**. Everything without a phase is live today and has a test.
+
+That distinction was missing, and nine rows read as present-tense protections that
+nothing implemented: a rate-limit preflight, receipts after every operation, an
+`apply`-time schema, a GraphQL error classifier, a mutation allowlist. It is the same
+failure `AGENTS.md` §7 names, and the one that kept CI broken for thirteen runs while
+four documents said the gate ran automatically. The `README.md` command table already
+used an "Available: Phase 3" column for exactly this reason; this file simply had not
+adopted it.
 
 ## The table
 
@@ -39,7 +51,7 @@ against a live account rather than read in the documentation.
 | **The API** | `PUT /repos/{owner}/{repo}/branches/{branch}/protection` replaces the entire object and requires every key, with explicit nulls for the ones not wanted. |
 | **The obvious implementation** | Send only the field being changed. |
 | **What it destroys** | The required status checks, the push restrictions, and the review requirements that were not named - silently, with a 200. |
-| **Mitigation** | Not implemented. `repo-protection` prints the body a person would have to send and reports `manual` / `warning`. See [scope-and-limits.md](../overview/scope-and-limits.md). |
+| **Mitigation** | **Phase 4, and never as an `apply`.** `repo-protection` will print the body a person would have to send and report `manual` / `warning`. See [scope-and-limits.md](../overview/scope-and-limits.md). |
 
 ### 4. Admin enforcement plus required reviews locks the owner out
 
@@ -48,7 +60,7 @@ against a live account rather than read in the documentation.
 | **The API** | `enforce_admins: true` with `required_approving_review_count >= 1`. |
 | **The obvious implementation** | "Let us protect `main` properly." |
 | **What it destroys** | `main` becomes **unmergeable**. The author cannot approve their own pull request, and admin enforcement admits no bypass. The only recovery is turning protection off by hand in the web interface. On a single-maintainer account this is not an edge case; it is the default outcome of doing the obvious thing. |
-| **Mitigation** | `validate` rejects that combination **offline**, before any token is read. If `apply` ever exists it will use rulesets, whose `bypass_actors` can include the admin role. |
+| **Mitigation** | **Phase 4.** `repo-protection`'s `validate` will reject that combination offline, before any token is read. If `apply` ever exists it will use rulesets, whose `bypass_actors` can include the admin role. |
 
 ### 5. A contents write overwrites when given a sha
 
@@ -57,7 +69,7 @@ against a live account rather than read in the documentation.
 | **The API** | `PUT /repos/{owner}/{repo}/contents/{path}` requires the blob `sha` when the file already exists, and returns 422 when it is omitted. Supplied with a stale `sha`, it overwrites anyway. |
 | **The obvious implementation** | Read the file, take its `sha`, send the new content - because the API asked for a `sha`. |
 | **What it destroys** | A README somebody wrote by hand, replaced, with the commit attributed to the token. |
-| **Mitigation** | `sha` is never sent. The 422 is the *useful* answer: it is the API confirming the file exists, which becomes `update` / `protected`. Double barrier - the plan does not emit a `create` for something that exists, and the API would refuse it if it did. |
+| **Mitigation** | **Phase 4.** `sha` will never be sent. The 422 is the *useful* answer: it is the API confirming the file exists, which becomes `update` / `protected`. Double barrier - the plan will not emit a `create` for something that exists, and the API would refuse it if it did. |
 
 ### 6. `PATCH /repos` accepts `private` and `archived` as ordinary fields
 
@@ -66,7 +78,7 @@ against a live account rather than read in the documentation.
 | **The API** | The same endpoint that sets a description also sets `private`, `archived`, `is_template`, `name` and `default_branch`. |
 | **The obvious implementation** | A generic writer that PATCHes whatever the configuration hands it. |
 | **What it destroys** | `private` detaches the fork network and disables Pages, irreversibly in the sense that matters. `archived` makes every later write fail, including this tool's own. |
-| **Mitigation** | The metadata schema declares `additionalProperties: false` and does not contain those properties; the writer has an allowlist; and an absence test asserts no hashtable anywhere in the repository has a key of those names - which is the shape a request body takes. |
+| **Mitigation** | The absence test is **live now**: it asserts no hashtable anywhere in the repository has a key named `private`, `visibility`, `archived`, `is_template` or `default_branch`, which is the shape a request body takes. **Phase 3** adds the other two halves - a metadata schema with `additionalProperties: false` that omits those properties, and an allowlist in the writer. |
 
 ### 7. Deleting a label removes it from history
 
@@ -75,7 +87,7 @@ against a live account rather than read in the documentation.
 | **The API** | `DELETE /repos/{owner}/{repo}/labels/{name}`. |
 | **The obvious implementation** | "Reconcile the labels to match the declaration." |
 | **What it destroys** | The label on **every issue and pull request** that carried it, with no record of which ones. |
-| **Mitigation** | Nothing is deleted. Labels are per-item CRUD - `POST /labels` creates one, `PATCH /labels/{name}` updates one - so additive is the natural shape rather than a workaround. Undeclared labels, including the nine GitHub creates by default, are `protected`. |
+| **Mitigation** | **Phase 3.** Nothing is deleted. Labels are per-item CRUD - `POST /labels` creates one, `PATCH /labels/{name}` updates one - so additive is the natural shape rather than a workaround. Undeclared labels, including the nine GitHub creates by default, will be `protected`. |
 
 ### 8. Renaming a label rewrites the whole issue history
 
@@ -84,7 +96,7 @@ against a live account rather than read in the documentation.
 | **The API** | `PATCH /repos/{owner}/{repo}/labels/{name}` with `new_name`. |
 | **The obvious implementation** | "Let us normalise the label names." |
 | **What it destroys** | The old name across the entire issue and pull request history, in one call, with no batch undo. |
-| **Mitigation** | `new_name` is not implemented. Same criterion as a rename in the sibling projects: an operation whose blast radius is not bounded by the plan. |
+| **Mitigation** | **Phase 3.** `new_name` will not be implemented. Same criterion as a rename in the sibling projects: an operation whose blast radius is not bounded by the plan. |
 
 ### 9. GraphQL reports failure with HTTP 200
 
@@ -93,7 +105,7 @@ against a live account rather than read in the documentation.
 | **The API** | A GraphQL error comes back as **HTTP 200** with an `errors` array in the body and `data` set to null. |
 | **The obvious implementation** | `if ($statusCode -eq 200) { use $data }`. |
 | **What it destroys** | A `FORBIDDEN` or `RATE_LIMITED` reads as an empty result, so the plan reports "the project has no fields" instead of "I could not read it" - and the reader acts on a fabricated fact. |
-| **Mitigation** | `GitHub.GraphQL` classifies `errors` **before** looking at `data`; any error becomes `blocked`. **Measured**: a `projectsV2` query with a token lacking `read:project` returned HTTP 200 carrying `errors[].type = "INSUFFICIENT_SCOPES"`. The fixture is committed as `tests/fixtures/graphql-errors.json`, in phase 1, so the trap is written down before the code that must handle it exists. |
+| **Mitigation** | **Phase 5.** `GitHub.GraphQL` will classify `errors` **before** looking at `data`, and any error becomes `blocked`. **Measured**: a `projectsV2` query with a token lacking `read:project` returned HTTP 200 carrying `errors[].type = "INSUFFICIENT_SCOPES"`. The fixture is committed as `tests/fixtures/graphql-errors.json` in phase 1, so the trap is written down before the code that must handle it exists. |
 
 ### 10. Projects v2 field options are replace-all, and field deletion is total
 
@@ -102,7 +114,7 @@ against a live account rather than read in the documentation.
 | **The API** | `updateProjectV2Field` with `singleSelectOptions` replaces the option set. `deleteProjectV2Field` removes the field. |
 | **The obvious implementation** | Declare the options wanted. |
 | **What it destroys** | Replacing the option set loses the values already assigned on every item. Deleting the field loses them all, with no recycle bin. |
-| **Mitigation** | Options are a union. The `delete*` mutations are not implemented, and an absence test asserts every `*ProjectV2*` mutation name appearing as a literal is on an allowlist. |
+| **Mitigation** | **Phase 5.** Options will be a union, and the `delete*` mutations will not be implemented. The allowlist absence test for `*ProjectV2*` mutation names arrives with that phase; today there is no GraphQL code for it to guard. |
 
 ### 11. There are two rate limits, and they behave differently
 
@@ -111,7 +123,7 @@ against a live account rather than read in the documentation.
 | **The API** | The primary budget is 5000 requests an hour, visible in `x-ratelimit-remaining`. The **secondary** limits are undocumented ceilings on bursts of writes against one repository, and they answer 403 or 429 with `retry-after`. |
 | **The obvious implementation** | Loop the apply over every repository, retry immediately on a 403. |
 | **What it destroys** | The run stops halfway, having changed half the repositories, with no record of which half. Retrying immediately escalates a secondary limit into a longer block. |
-| **Mitigation** | `retry-after` is honoured; `minimumWriteIntervalMilliseconds` spaces writes; the run aborts **before starting** if `x-ratelimit-remaining` is below the threshold; and a receipt is written after **every** completed operation, so an interrupted run is a resume rather than a guess. |
+| **Mitigation** | `retry-after` is honoured **now**, in `Get-HttpRetryDecision`. The rest is **phase 3**, when the first writer exists: `minimumWriteIntervalMilliseconds` spacing writes, aborting before starting if `x-ratelimit-remaining` is below `minimumRateLimitRemaining`, and a receipt after every completed operation so an interrupted run is a resume rather than a guess. Those two defaults are declared in `project-context.json` and **read by nothing yet** - deliberately, because a write protection built before the writer is machinery nothing exercises. See [ADR 0001](../adr/0001-write-boundary.md). |
 
 ### 12. Pagination does not report a total in the body
 

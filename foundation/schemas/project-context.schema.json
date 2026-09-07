@@ -98,17 +98,20 @@
         },
         "minimumRateLimitRemaining": {
           "type": "integer",
-          "minimum": 0
+          "minimum": 0,
+          "description": "PHASE 3, read by nothing yet. The floor on x-ratelimit-remaining below which a run that is about to write aborts before starting. Declared now because the shape of the declaration is the design, and deliberately unimplemented: a write protection built before the writer is machinery nothing exercises. See docs/adr/0001-write-boundary.md."
         },
         "minimumWriteIntervalMilliseconds": {
           "type": "integer",
           "minimum": 0,
-          "maximum": 60000
+          "maximum": 60000,
+          "description": "PHASE 3, read by nothing yet. The minimum gap between two writes, to stay under GitHub's secondary rate limits. Declared now, unimplemented until a writer exists."
         },
         "tokenExpiryWarningDays": {
           "type": "integer",
           "minimum": 0,
-          "maximum": 365
+          "maximum": 365,
+          "description": "Days remaining on a fine-grained token below which plan emits a warning. Read by repo-inventory."
         }
       }
     },

@@ -377,3 +377,47 @@ Describe 'Documentation is indexed' {
         $unlinked | Should -BeNullOrEmpty -Because 'every document under docs/ must be reachable from docs/README.md'
     }
 }
+
+Describe 'The project context declares nothing it silently ignores' {
+
+    It 'either reads every declared default, or says in the schema that it does not' {
+        # A default declared in project-context.json and read by no code is a promise the
+        # configuration makes and the code does not keep. Two of them were exactly that -
+        # minimumRateLimitRemaining and minimumWriteIntervalMilliseconds - while
+        # github-notes.md described the protections they configure in the present tense.
+        # A reader adopting this template would have built phase 3 believing the
+        # rate-limit preflight was already there.
+        #
+        # Both readings are legitimate: implement it, or say it is not implemented. What
+        # is not legitimate is neither. So an unused default must OPEN its schema
+        # description with PHASE, which is the one place a reader of the configuration
+        # will actually look. -notlike rather than a regex on purpose: the first version
+        # of this line used  word boundaries, which a shell heredoc turned into
+        # literal backspace characters, so the pattern silently matched nothing and the
+        # guard fired on defaults that were correctly documented.
+        $root = Get-RepositoryRoot
+        $context = Get-Content -LiteralPath (Join-Path $root 'foundation/config/project-context.json') -Raw | ConvertFrom-Json
+        $schema = Get-Content -LiteralPath (Join-Path $root 'foundation/schemas/project-context.schema.json') -Raw | ConvertFrom-Json
+
+        $source = @(Get-ChildItem (Join-Path $root 'foundation') -Recurse -Include '*.psm1', '*.ps1') +
+                  @(Get-ChildItem (Join-Path $root 'automations') -Recurse -Include '*.ps1')
+        $code = ($source | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join "`n"
+
+        $undocumented = New-Object System.Collections.Generic.List[string]
+        foreach ($name in $context.defaults.PSObject.Properties.Name) {
+            if ($code -match [regex]::Escape($name)) { continue }
+
+            $described = ''
+            $property = $schema.properties.defaults.properties.PSObject.Properties[$name]
+            if ($property -and $property.Value.PSObject.Properties['description']) {
+                $described = [string] $property.Value.description
+            }
+
+            if ($described -notlike 'PHASE*') {
+                $undocumented.Add($name)
+            }
+        }
+
+        $undocumented | Should -BeNullOrEmpty -Because "a default nothing reads must say so in its schema description, or be implemented:`n$($undocumented -join ', ')"
+    }
+}
