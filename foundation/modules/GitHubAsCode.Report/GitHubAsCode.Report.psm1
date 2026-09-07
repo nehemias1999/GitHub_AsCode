@@ -71,7 +71,30 @@ $script:SecretValuePattern = @(
     # reason that says which repository disagrees is the point of the message.
     @{ Pattern = '(?i)\b([a-z][a-z0-9+.\-]*://)[^/\s@"'']+@'; Replacement = '$1[redacted]@' }
 
-    # A Basic credential, should one ever reach a message. Base64 of user:token.
+    # Bearer, which is the scheme THIS repository authenticates with - see
+    # New-BearerAuthorizationHeader. Its absence was the gap that mattered: both rules
+    # here arrived with the port from a project that uses Basic, so the layer whose
+    # entire purpose is catching "a token that reached a message by a route nobody
+    # enumerated" was blind to the only scheme in use, while carrying a rule for one
+    # that is never sent.
+    #
+    # \S+ rather than a token-shaped pattern, on purpose. Whatever follows Bearer is a
+    # credential regardless of how it looks, and a rule matching only known prefixes
+    # would miss the next format GitHub introduces.
+    @{ Pattern = '(?i)\bBearer\s+\S+'; Replacement = 'Bearer [redacted]' }
+
+    # A bare GitHub token, under no header and no property name. Both other layers miss
+    # this: redaction by property name cannot see a value in free text, and the userinfo
+    # rule only fires inside a URL.
+    #
+    # Two shapes. The five classic gh*_ prefixes, and github_pat_ for fine-grained -
+    # which is the type this repository recommends, and which carries underscores in its
+    # body, so it needs its own character class rather than an alternation.
+    @{ Pattern = '(?<![A-Za-z0-9_])gh[pousr]_[A-Za-z0-9]{20,}'; Replacement = '[redacted-token]' }
+    @{ Pattern = '(?<![A-Za-z0-9_])github_pat_[A-Za-z0-9_]{20,}'; Replacement = '[redacted-token]' }
+
+    # A Basic credential. Kept even though nothing here sends one: a proxy or an SSO
+    # gateway in front of the API can put one in a message, and the rule costs nothing.
     @{ Pattern = '(?i)\bBasic\s+[A-Za-z0-9+/]{8,}={0,2}'; Replacement = 'Basic [redacted]' }
 )
 

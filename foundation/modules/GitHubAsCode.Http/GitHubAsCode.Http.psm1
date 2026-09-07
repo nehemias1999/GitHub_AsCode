@@ -86,25 +86,45 @@ function Assert-HttpBaseUrl {
 
     $parsed = $null
     if (-not [Uri]::TryCreate($trimmed, [UriKind]::Absolute, [ref] $parsed)) {
-        throw "$VariableName is '$trimmed', which is not an absolute URL. It must include the scheme, for example https://example.com."
+        # The value is DESCRIBED, not echoed, and that is the whole fix.
+        #
+        # The comment further down says this function "deliberately does not echo the
+        # URL back" - but it guarded only the userinfo branch, and this is the branch a
+        # pasted credential reaches. A token is not an absolute URL, so TryCreate fails
+        # here, and the previous message printed the token in full.
+        #
+        # It is an ordinary slip rather than an exotic one: .env holds the API URL, the
+        # owner and the token within a few lines of each other. And this throw is
+        # terminating - it never passes through Write-ModuleLog, which is where console
+        # output gets masked - so in a workflow the value lands in the run log.
+        #
+        # Length and the presence of a scheme separator are enough to tell a typo'd URL
+        # from something that is not a URL at all, which is what the reader needs.
+        $shape = if ($trimmed.Contains('://')) { "contains '://' but could not be parsed" } else { "does not contain '://'" }
+        throw "$VariableName is not an absolute URL: $($trimmed.Length) characters, and it $shape. The value is not shown here, because a value in the wrong line of .env is usually a credential. Set it to an absolute URL, for example https://api.github.com."
     }
     if ($parsed.Scheme -notin @('http', 'https')) {
         throw "$VariableName uses scheme '$($parsed.Scheme)'. Only http and https are supported."
     }
-    # http is accepted and announced, not accepted silently. Every request carries a
-    # Basic header, and Base64 is an encoding, not encryption - so on plain http the
-    # token is readable by anything on the path. It stays allowed because a controller
-    # on a private network without a certificate is a real situation, and refusing it
-    # outright would push people towards disabling TLS checks instead, which is worse.
+    # http is accepted and announced, not accepted silently. Every request carries the
+    # token in an Authorization header, in the clear - Bearer neither encodes nor
+    # encrypts anything - so on plain http the token is readable by anything on the
+    # path. It stays allowed because an API endpoint on a private network without a
+    # certificate is a real situation, and refusing it outright would push people
+    # towards disabling TLS checks instead, which is worse.
+    #
+    # (The inherited version of this comment said "a Basic header". True of the project
+    # this was ported from; this one authenticates with Bearer.)
     if ($parsed.Scheme -eq 'http') {
         Write-Warning "$VariableName uses http, so the API token travels unencrypted on every request. Use https unless this is a network you control end to end."
     }
     # Credentials in the base URL, rejected rather than carried. Two reasons, and the
     # second is the one that bites: the header is already how this authenticates, so
-    # userinfo adds nothing - and every error message below, plus detail.controllerUrl
-    # in every report, interpolates this value. One misconfigured .env would copy a
-    # token into every artefact the tool writes. The message deliberately does not
-    # echo the URL back.
+    # userinfo adds nothing - and the base URL is interpolated into error messages and
+    # written to detail.apiBaseUrl in every report. One misconfigured .env would copy a
+    # credential into every artefact the tool writes. This message does not echo the URL
+    # back, and as of the fix above neither does the parse failure - which was the
+    # branch that actually mattered.
     if ($parsed.UserInfo) {
         throw "$VariableName carries credentials in the URL (a user[:password]@ before the host). Remove them: authentication uses the token from the environment, and a URL with userinfo would be copied into reports and error messages."
     }

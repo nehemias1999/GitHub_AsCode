@@ -106,7 +106,12 @@ function Get-GitHubContext {
 
     $owner = Get-GitHubAsCodeRequiredValue -Name $github.ownerEnv
     if ($owner -notmatch '^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$') {
-        throw "$($github.ownerEnv) is not a valid GitHub account name: '$owner'. Expected the login only - not a URL, and not owner/repo."
+        # Not echoed, for the same reason Assert-HttpBaseUrl stopped echoing. .env holds
+        # the owner and the token a few lines apart, and a value that fails this check is
+        # by definition not a login - which makes it more likely to be the thing that was
+        # pasted by mistake. A login is at most 39 characters, so the length alone
+        # usually identifies the error.
+        throw "$($github.ownerEnv) is not a valid GitHub account name: $($owner.Length) characters, which does not match the allowed shape. The value is not shown here, because a value in the wrong line of .env is usually a credential. Expected the login only - not a URL, and not owner/repo."
     }
 
     $token = Get-GitHubAsCodeRequiredValue -Name $TokenEnvironmentName
