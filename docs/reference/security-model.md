@@ -55,11 +55,14 @@ what makes the whole configuration committable.
 
 Both read a response header, so both are facts rather than assumptions.
 
-**Classic tokens are refused for any `apply`.** A classic PAT answers with
-`x-oauth-scopes`; a fine-grained one does not. If that header is present when a write
-is about to run - or if it lists `delete_repo` - the run aborts with exit 1 **before
-the first write**. `repo-inventory` only warns, because reading with a classic token is
-harmless.
+**Classic tokens will be refused for any `apply` - phase 3.** A classic PAT answers with
+`x-oauth-scopes`; a fine-grained one does not, so the header is a reliable test. When the
+first writer exists, that check aborts the run with exit 1 before the first write if the
+header is present or lists `delete_repo`.
+
+What is live **now** is the reporting half: `repo-inventory` reads the header and warns,
+because reading with a classic token is harmless. A refusal has nothing to refuse until
+there is a write path - see [ADR 0001](../adr/0001-write-boundary.md).
 
 **Expiry is warned about.** Fine-grained tokens send
 `github-authentication-token-expiration`. `inventory` reports the days remaining and
