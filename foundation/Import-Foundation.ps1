@@ -24,7 +24,7 @@
 .NOTES
     Both parameters are prefixed for the same reason every variable in the body is:
     this script is DOT-SOURCED, so its param block declares variables in the CALLER's
-    scope. Inherited from Jenkins_AsCode, where an unprefixed -Name gave every caller
+    scope. Inherited from a sibling project, where an unprefixed -Name gave every caller
     a [string[]] typed $Name, and a caller then assigning a string to it silently got
     back a one-element array - failing three layers away with "Cannot convert value
     to type System.String".

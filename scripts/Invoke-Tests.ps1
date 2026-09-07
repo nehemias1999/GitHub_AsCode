@@ -141,11 +141,12 @@ if ($Skip -notcontains 'Analyzer') {
 if ($Skip -notcontains 'Pester') {
     # Version selection is explicit, and it is not "the newest one installed".
     #
-    # Jenkins_AsCode takes the highest available Pester and imports it with
+    # The sibling project this was ported from takes the highest available Pester and
+    # imports it with
     # -MinimumVersion 5.0. That was written when 5.x was the only 5-or-later major
-    # in existence. Pester 6 has since shipped, so on a machine that has it - this
-    # one does, 6.1.0 - that gate silently runs the suite on a major nobody tested
-    # it against, and reports the result as if it had.
+    # in existence. Pester 6 has since shipped, so on any machine that has it, that
+    # gate silently runs the suite on a major nobody tested it against, and reports the
+    # result as if it had.
     #
     # So: prefer the newest version inside the range this suite is written for, and
     # fall back to a newer major only with a line saying that is what happened. A

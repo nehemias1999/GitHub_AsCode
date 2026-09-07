@@ -12,16 +12,17 @@ state differs from the declaration. It cannot write.
 ## Why it exists
 
 Because the endpoint that looks right is wrong. `GET /users/{user}/repos` returns public
-repositories only, and on this account that is **15 repositories instead of 24** - nine
-private ones missing, with nothing in the response indicating anything is absent.
+repositories only. On the account where this was first measured that hid **a third of the
+total** - every private repository missing, with nothing in the response indicating
+anything is absent.
 
 So this reads `GET /user/repos` with `affiliation=owner`, and there is a repository-wide
 absence test asserting no code path builds a `users/` path. See
 [ADR 0005](../../docs/adr/0005-authenticated-account-listing.md).
 
-The output is the input to a decision: what to do with the five `pipeline` repositories
-that have not been touched since February 2026. That decision is deliberately not this
-tool's to make.
+The output is the input to a decision: which of the older repositories are worth
+keeping, standardising or archiving. That decision is deliberately not this tool's to
+make - it produces the evidence, a person makes the call.
 
 ## Commands
 

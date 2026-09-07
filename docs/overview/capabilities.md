@@ -31,9 +31,8 @@ toggles (`has_issues`, `has_wiki`, `has_projects`, `has_discussions`), the three
 timestamps, size, and open issue count.
 
 Around eighty properties come back per repository and most of them are URL templates.
-The snapshot keeps the list above and drops the rest, because a 24-repository report
-carrying everything is an unreadable megabyte and a diff between two runs of it is
-meaningless.
+The snapshot keeps the list above and drops the rest, because even a small report carrying
+everything is an unreadable megabyte and a diff between two runs of it is meaningless.
 
 Per account:
 

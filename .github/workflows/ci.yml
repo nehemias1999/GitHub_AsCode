@@ -27,31 +27,32 @@ jobs:
         # validator, ConvertTo-Json depth, and several places that handle an empty
         # array unwrapping to $null.
         #
-        # This matrix is the ONLY place PowerShell 7 gets exercised. The workstation
-        # this repository is developed on has 5.1 only, so a local run tests the floor
-        # and nothing else. Removing pwsh here would leave half the declared support
-        # completely unexercised. See docs/process/testing-strategy.md.
+        # This matrix is often the ONLY place PowerShell 7 gets exercised: a Windows
+        # development machine may ship 5.1 and nothing else, in which case a local run
+        # tests the floor alone. Removing pwsh here would leave half the declared
+        # support completely unexercised. See docs/process/testing-strategy.md.
         shell: [powershell, pwsh]
     name: ${{ matrix.shell }}
 
     # The shell is a job-level DEFAULT, not a per-step setting, and that is the whole
     # reason this workflow runs at all.
     #
-    # Ported from Jenkins_AsCode, this file set `shell: ${{ matrix.shell }}` on each
-    # step. GitHub validates a step's `shell` when it parses the workflow, before any
+    # As ported from the read-only sibling project, this file set
+    # `shell: ${{ matrix.shell }}` on each step. GitHub validates a step's `shell` when
+    # it parses the workflow, before any
     # expression is evaluated, so an expression there is not a shell name and the run
     # fails at startup - in zero seconds, with no job, and with the run labelled by its
     # file path instead of its name.
     #
-    # That is why Jenkins_AsCode has never had a green CI run: every one of its runs
-    # failed this way, while four of its documents claimed the gate ran automatically.
-    # A startup failure produces no job and no log, so it looks like nothing rather than
-    # like a failure, which is how it went unnoticed.
+    # That is why the project this was ported from had never had a green CI run: every
+    # one of its runs failed this way, while four of its documents claimed the gate ran
+    # automatically. A startup failure produces no job and no log, so it looks like
+    # nothing rather than like a failure, which is how it went unnoticed.
     #
     # `defaults.run.shell` is evaluated later and does accept the matrix context.
     # Verified empirically rather than assumed: the powershell leg reports
-    # `engine=Desktop version=5.1.26100`, the pwsh leg `engine=Core version=7.6.5`. Both
-    # engines really are exercised, which is the only reason the matrix is worth having.
+    # `engine=Desktop`, the pwsh leg `engine=Core`. Both engines really are exercised,
+    # which is the only reason the matrix is worth having.
     defaults:
       run:
         shell: ${{ matrix.shell }}

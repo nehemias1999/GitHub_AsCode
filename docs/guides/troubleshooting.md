@@ -23,9 +23,9 @@ Cause, in order of likelihood:
    `foundation/config/project-context.json`. It is reported as blocked rather than
    truncated quietly, precisely so this is visible.
 3. **Something is reading the public endpoint.** `GET /users/{user}/repos` returns
-   public repositories only - measured on this account as 15 against 24. There is an
-   absence test asserting no code path builds a `users/` path, so this should be
-   impossible; if it happens, that test has a hole.
+   public repositories only - on the account where this was first measured it hid a third
+   of the total. There is an absence test asserting no code path builds a `users/` path,
+   so this should be impossible; if it happens, that test has a hole.
 
 Cross-check against a different tool:
 
@@ -123,8 +123,8 @@ because it is the trap the whole design of `GitHub.GraphQL` answers.
 
 GraphQL reports failure with **HTTP 200** and an `errors` array. A client checking only
 the status code reads `FORBIDDEN` or `RATE_LIMITED` as an empty result. That was
-observed live against this account: a `projectsV2` query with a token lacking
-`read:project` returned 200 carrying `INSUFFICIENT_SCOPES`. See row 9 of
+observed live: a `projectsV2` query with a token lacking `read:project` returned 200
+carrying `INSUFFICIENT_SCOPES`. See row 9 of
 [github-notes.md](../reference/github-notes.md).
 
 ## Where the evidence is

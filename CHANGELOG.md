@@ -52,7 +52,7 @@ deliberate rather than as drift.
 - **`scripts/Invoke-Tests.ps1` no longer runs the suite on an untested Pester major.**
   The inherited version selected the highest installed version and imported it with
   `-MinimumVersion 5.0`, which was correct when 5.x was the only 5-or-later major. With
-  Pester 6 installed - as it is on the development workstation - it silently ran the
+  Pester 6 installed - as any current machine is - it silently ran the
   suite on an untested major and reported the result as if it were tested. It now
   prefers the newest version in `[5.5, 6.0)` and falls back to a newer major only with
   a warning saying so.
@@ -88,8 +88,8 @@ deliberate rather than as drift.
   documents claimed the gate ran automatically. A startup failure looks like nothing
   rather than like a failure, which is how it went unnoticed. The shell is now a
   job-level `defaults.run.shell`, which is evaluated later and does accept the matrix
-  context; verified empirically, the two legs report `engine=Desktop version=5.1.26100`
-  and `engine=Core version=7.6.5`.
+  context; verified empirically, the two legs report `engine=Desktop` and
+  `engine=Core`.
 - **A dead condition removed from the entry point.** The token-shape probe was guarded
   by "if any repository came back", which is always true once the listing has
   succeeded. It read as caution and decided nothing - and the one case it appeared to
@@ -106,9 +106,9 @@ deliberate rather than as drift.
 - The account login is an environment variable, not a configuration value: it is
   identifying data and the configuration is committed.
 
-### Verified against the live account
+### Verified against a live account
 
-Run on 2026-09-07 against `nehemias1999` (24 repositories):
+Run against a real account of 24 repositories:
 
 - `plan` reports `ok 24, pending 0, warning 0, protected 0, blocked 0`, exit 0 -
   **identical across two consecutive runs**, which is the idempotency acceptance
@@ -127,12 +127,15 @@ Run on 2026-09-07 against `nehemias1999` (24 repositories):
 
 ### Known limitations
 
-- **PowerShell 7 is exercised only in CI.** The development workstation has Windows
-  PowerShell 5.1 only, so a local run tests the declared floor and nothing else. The CI
-  matrix covers both engines.
+- **PowerShell 7 may be exercised only in CI.** A Windows machine can ship Windows
+  PowerShell 5.1 and nothing else, in which case a local run tests the declared floor
+  alone. The CI matrix covers both engines, which is why it is not optional.
 - The deny-term layer of the sensitive data gate is off on a fresh clone, because it
   reads a file excluded from version control. CI seeds it from a secret and then
   requires it.
 
-[Unreleased]: https://github.com/nehemias1999/GitHub_AsCode/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/nehemias1999/GitHub_AsCode/releases/tag/v0.1.0
+<!-- Replace <owner> with your account when you generate a repository from this
+     template. Left as a placeholder on purpose: a link to somebody else's repository
+     is worse than no link. -->
+[Unreleased]: https://github.com/<owner>/GitHub_AsCode/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/<owner>/GitHub_AsCode/releases/tag/v0.1.0

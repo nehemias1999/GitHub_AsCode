@@ -2,9 +2,9 @@
     RootModule        = 'GitHub.Rest.psm1'
     ModuleVersion     = '0.1.0'
     GUID              = '89eedb1d-0ea0-4a99-a914-a8df7c0ca35d'
-    Author            = 'nehemias1999'
+    Author            = 'TEMPLATE-AUTHOR'
     CompanyName       = 'Unspecified'
-    Copyright         = '(c) 2026 nehemias1999. Released under the MIT License.'
+    Copyright         = '(c) TEMPLATE-AUTHOR. Released under the MIT License.'
     Description       = 'What is GitHub-specific about talking to the REST API: pagination read from the Link header rather than computed, the account listing that includes private repositories, the two kinds of rate limit, and telling a classic token from a fine-grained one. The generic HTTP half is in GitHubAsCode.Http.'
     PowerShellVersion = '5.1'
 

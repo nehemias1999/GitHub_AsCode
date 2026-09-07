@@ -4,7 +4,7 @@
     # There are no exclusions. That is deliberate, and it is a change from the sibling
     # repositories rather than an oversight.
     #
-    # This file was ported from Jenkins_AsCode carrying six exclusions, each with a
+    # This file was ported from a sibling project carrying six exclusions, each with a
     # reason written against THAT codebase. Every one was measured against this one and
     # found to have zero findings:
     #
@@ -42,9 +42,9 @@
             #
             # This rule is the only thing that enforces the floor statically, and it
             # emits Warning - so it works only because Severity above includes Warning
-            # and Invoke-Tests.ps1 fails on warnings. It matters more here than in the
-            # siblings: the workstation this repository is developed on has no
-            # PowerShell 7 at all, so nothing else local exercises the upper end.
+            # and Invoke-Tests.ps1 fails on warnings. That matters whenever the machine
+            # running the suite has only one of the two engines installed, which is the
+            # common case on Windows: nothing else local exercises the other end.
             Enable         = $true
             TargetVersions = @('5.1', '7.0')
         }

@@ -15,7 +15,7 @@ is the one an implementation reaches for.
 
 **It returns public repositories only.**
 
-Measured against this account on 2026-09-07:
+Measured against one real account:
 
 | Source | Repositories |
 | --- | --- |
@@ -23,7 +23,7 @@ Measured against this account on 2026-09-07:
 | Public repository search | 15 |
 | **`GET /user/repos`, authenticated** | **24** |
 
-Nine private repositories - a third of the account - are invisible to the first
+Nine private repositories - a third of that account - are invisible to the first
 endpoint. It does not report a partial result, does not warn, and does not differ in
 shape. It returns a complete-looking array.
 

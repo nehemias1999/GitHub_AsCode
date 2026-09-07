@@ -18,9 +18,8 @@ Describe 'Get-GitHubTopicUnion' {
     It 'keeps a topic that is live and undeclared' {
         # THE test of this repository's central guarantee. PUT /topics replaces the
         # whole collection, so an implementation that sends the declared list deletes
-        # every topic added by hand. On the account this was written for the five
-        # Pipeline_* repositories have not been touched since February, so whatever
-        # is on them is exactly what nobody remembers declaring.
+        # every topic added by hand. Whatever sits on a repository nobody has touched in
+        # months is exactly what nobody remembers declaring.
         $union = Get-GitHubTopicUnion -LiveTopic @('added-by-hand') -DeclaredTopic @('ascode')
 
         $union.Payload | Should -Contain 'added-by-hand'
@@ -119,8 +118,8 @@ Describe 'New-GitHubRepositorySnapshot' {
     }
 
     It 'drops the URL templates a real payload is mostly made of' {
-        # Around eighty properties come back per repository. Carrying them all makes a
-        # 24-repository report an unreadable megabyte and a diff between two runs
+        # Around eighty properties come back per repository. Carrying them all makes
+        # even a small report an unreadable megabyte and a diff between two runs
         # meaningless.
         $snapshot = New-GitHubRepositorySnapshot -Repository $script:tool
 
@@ -142,7 +141,7 @@ Describe 'New-GitHubRepositorySnapshot' {
 
     It 'reports no licence as $null, not as an empty object' {
         # "No licence" and "a licence with no name" have to be distinguishable: the
-        # first is the finding on 22 of 24 repositories, the second is a bug.
+        # first is the most common finding on a real account, the second is a bug.
         (New-GitHubRepositorySnapshot -Repository $script:bare).license | Should -BeNullOrEmpty
     }
 
@@ -177,7 +176,7 @@ Describe 'Get-GitHubRepositoryStatus' {
         # and for one this token cannot see, so the tool genuinely does not know
         # which. Reporting create would be a plan to make something that may already
         # exist; blocked is what "could not be determined" means.
-        $declaration = [pscustomobject]@{ name = 'EXAMPLE-absent'; class = 'tooling' }
+        $declaration = [pscustomobject]@{ name = 'EXAMPLE-absent'; class = 'tool' }
 
         $status = Get-GitHubRepositoryStatus -Declaration $declaration -Snapshot $null
 
@@ -190,7 +189,7 @@ Describe 'Get-GitHubRepositoryStatus' {
     It 'reports an archived repository as protected and plans nothing against it' {
         # An archived repository is read-only: every write fails. A plan whose apply
         # cannot succeed is not a plan.
-        $declaration = [pscustomobject]@{ name = 'EXAMPLE-archived'; class = 'practice'; description = 'something else entirely' }
+        $declaration = [pscustomobject]@{ name = 'EXAMPLE-archived'; class = 'archived'; description = 'something else entirely' }
 
         $status = Get-GitHubRepositoryStatus -Declaration $declaration -Snapshot $script:snapshots['EXAMPLE-archived']
 
@@ -201,7 +200,7 @@ Describe 'Get-GitHubRepositoryStatus' {
     It 'reports a matching repository as ok' {
         $declaration = [pscustomobject]@{
             name        = 'EXAMPLE-tool'
-            class       = 'tooling'
+            class       = 'tool'
             description = 'EXAMPLE - a tool.'
             topics      = @('powershell', 'ascode')
         }
@@ -216,7 +215,7 @@ Describe 'Get-GitHubRepositoryStatus' {
         # The API returns an unset description as null and an unset homepage as an
         # empty string, inconsistently. Comparing them raw makes the plan report a
         # change the apply cannot make, on every run, forever.
-        $declaration = [pscustomobject]@{ name = 'EXAMPLE-bare'; class = 'pipeline'; description = ''; homepage = '' }
+        $declaration = [pscustomobject]@{ name = 'EXAMPLE-bare'; class = 'service'; description = ''; homepage = '' }
 
         $status = Get-GitHubRepositoryStatus -Declaration $declaration -Snapshot $script:snapshots['EXAMPLE-bare']
 
@@ -228,7 +227,7 @@ Describe 'Get-GitHubRepositoryStatus' {
         # approving the plan, not for a log parser.
         $declaration = [pscustomobject]@{
             name        = 'EXAMPLE-bare'
-            class       = 'pipeline'
+            class       = 'service'
             description = 'EXAMPLE - a new description.'
             topics      = @('newly-declared')
         }
@@ -245,7 +244,7 @@ Describe 'Get-GitHubRepositoryStatus' {
     It 'does not report a change when the declaration only repeats topics already live' {
         # The union is additive, so declaring what is already there is not a change.
         # Reporting one would mean plan never converges.
-        $declaration = [pscustomobject]@{ name = 'EXAMPLE-handmade'; class = 'practice'; topics = @('added-by-hand') }
+        $declaration = [pscustomobject]@{ name = 'EXAMPLE-handmade'; class = 'archived'; topics = @('added-by-hand') }
 
         $status = Get-GitHubRepositoryStatus -Declaration $declaration -Snapshot $script:snapshots['EXAMPLE-handmade']
 
@@ -257,7 +256,7 @@ Describe 'Get-GitHubRepositoryStatus' {
         # something never compared is how a report becomes confidently wrong - so an
         # absent declared field yields no difference rather than a difference against
         # empty.
-        $declaration = [pscustomobject]@{ name = 'EXAMPLE-tool'; class = 'tooling' }
+        $declaration = [pscustomobject]@{ name = 'EXAMPLE-tool'; class = 'tool' }
 
         $status = Get-GitHubRepositoryStatus -Declaration $declaration -Snapshot $script:snapshots['EXAMPLE-tool']
 
@@ -272,7 +271,7 @@ Describe 'Get-GitHubRepositoryStatus' {
         $validAction = @(Get-PlanActionName)
 
         foreach ($name in @('EXAMPLE-tool', 'EXAMPLE-bare', 'EXAMPLE-archived', 'EXAMPLE-private')) {
-            $declaration = [pscustomobject]@{ name = $name; class = 'tooling'; description = 'forces a difference' }
+            $declaration = [pscustomobject]@{ name = $name; class = 'tool'; description = 'forces a difference' }
             $status = Get-GitHubRepositoryStatus -Declaration $declaration -Snapshot $script:snapshots[$name]
 
             $validStatus | Should -Contain $status.Status

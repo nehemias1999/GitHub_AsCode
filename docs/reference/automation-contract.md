@@ -7,9 +7,9 @@ consistent with the existing ones without anyone having to read them.
 
 **Audience.** Anyone adding or reviewing an automation.
 
-Adapted from `ADO_AsCode`, whose version of this document notes that it is the most
-reusable artefact in that repository and is not specific to Azure DevOps. It is not
-specific to GitHub either.
+Adapted from a sibling project that applies the same pattern to Azure DevOps, where this
+document is the most reusable artefact in the repository and is not specific to that
+platform. It is not specific to GitHub either.
 
 ## The seven items
 

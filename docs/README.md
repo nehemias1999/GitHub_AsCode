@@ -4,6 +4,7 @@ Routed by need, not by folder.
 
 | If you want to | Read |
 | --- | --- |
+| **Start here, if you generated this from the template** | [using-this-template.md](guides/using-this-template.md) |
 | Run it | [getting-started.md](guides/getting-started.md) |
 | Know why this exists | [problem-statement.md](overview/problem-statement.md) |
 | Know exactly what it does | [capabilities.md](overview/capabilities.md) |

@@ -20,8 +20,8 @@ test rather than by trust.
    place to audit, one place a write could ever be added.
 
 4. **The account listing comes from `GET /user/repos`, never `GET /users/{user}/repos`.**
-   The second returns public repositories only - measured as 15 against 24 on this
-   account. No string literal anywhere may begin `users/`.
+   The second returns public repositories only - on the account where this was first
+   measured it hid a third of the total. No string literal anywhere may begin `users/`.
 
 5. **A collection is written as a union, never a replacement.** `PUT /topics` replaces
    everything. Undeclared members are reported as `protected`, not removed.
@@ -81,8 +81,7 @@ is the guard working. **Rename your code, do not loosen the guard.**
 ## 5. Conventions
 
 **Code and comments in English, ASCII only. Documentation in Spanish or English, chosen
-per document and consistent within it.** The existing documents are in English to match
-the sibling repositories.
+per document and consistent within it.** The existing documents are in English.
 
 - `Set-StrictMode -Version Latest` and `$ErrorActionPreference = 'Stop'` at the top of
   every file.
@@ -118,8 +117,8 @@ critically**. Phase 1 found six real defects in the inherited code, and the patt
 running through them is worth naming: **a ported justification stops being evidence.**
 
 - `Invoke-Tests.ps1` selected the highest installed Pester and imported it with
-  `-MinimumVersion 5.0`, so on a machine with Pester 6 it ran the suite on an untested
-  major and reported the result as if it were tested.
+  `-MinimumVersion 5.0`, so once Pester 6 shipped it ran the suite on an untested major
+  and reported the result as if it were tested.
 - The "network I/O in one place" absence test matched raw file **content**, so it fired
   on any file that merely mentioned `Invoke-WebRequest` in a comment - which meant the
   comment explaining the boundary would have had to be deleted to make the guard pass.

@@ -11,10 +11,9 @@
 
     The account listing trap. GET /users/{user}/repos returns PUBLIC repositories
     only. The private ones exist solely behind GET /user/repos with an authenticated
-    token. On the account this repository was written for that is the difference
-    between 15 repositories and 24 - a third of the account, missing in silence, from
-    the inventory whose entire job is to be complete. So the owner's repositories are
-    read from /user/repos.
+    token. On the account where this was first measured, that was a third of the total
+    - missing in silence, from the inventory whose entire job is to be complete. So the
+    owner's repositories are read from /user/repos.
 
     Rate limits, of which there are two. The primary budget is 5000 requests an hour
     and is visible in x-ratelimit-remaining. The secondary limits are undocumented
@@ -479,10 +478,9 @@ function Get-GitHubOwnedRepository {
         GET /users/{owner}/repos, which returns public repositories only.
 
         That distinction is the reason this function exists rather than each caller
-        building a path. On the account this repository was written for, the public
-        endpoint reports 15 repositories and this one reports 24: nine private
-        repositories would have been missing from an inventory that reported itself
-        complete.
+        building a path. On the account where this was first measured, the public
+        endpoint omitted a third of the total: every private repository would have been
+        missing from an inventory that reported itself complete.
 
         affiliation=owner rather than the default, because the default also brings in
         repositories the account collaborates on or reaches through an organization,

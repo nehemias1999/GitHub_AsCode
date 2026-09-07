@@ -20,7 +20,7 @@ Describe 'Get-HttpLinkHeaderTarget' {
         # The regression this exists for: the comma separating one link from the next
         # landed at the end of the parameter segment, so rel="next", parsed as the
         # value 'next",' - matching no relation. The header then looked like a last
-        # page, and a 24-repository account silently reported its first 3.
+        # page, and an account of any size silently reported only its first page.
         $link = Get-FixtureText -Name 'link-header-two-links.txt'
 
         $next = Get-HttpLinkHeaderTarget -LinkHeader $link -Relation 'next'
