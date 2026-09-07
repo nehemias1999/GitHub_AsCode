@@ -9,8 +9,9 @@
       validate   Offline. The declaration against its schema, plus the invariants a
                  schema cannot express. No network, no token.
       inventory  Reads every repository the account owns - public AND private - and
-                 records it. Makes no reference to the declaration, so it is the
-                 honest starting point.
+                 records what it found. Consults the declaration for nothing, so it is
+                 the honest starting point and the one command that works before a
+                 declaration exists. Exits 0 unless the account could not be read.
       plan       Compares the declaration against live state and classifies every
                  difference.
       smoke      Plan plus the manual verification checklist.
@@ -292,8 +293,45 @@ if ($null -ne $tokenShape.DaysUntilExpiry) {
     }
 }
 
-$publicCount = @($liveRepository | Where-Object { -not $_.private }).Count
-$privateCount = @($liveRepository | Where-Object { $_.private }).Count
+# --- plan -----------------------------------------------------------------
+
+$plan = New-Plan -Command $Command -Target $gitHubContext.Owner
+
+$snapshotByName = @{}
+foreach ($repository in $liveRepository) {
+    $snapshot = New-GitHubRepositorySnapshot -Repository $repository
+
+    # A payload with no name cannot be keyed, and indexing a hashtable with $null throws
+    # under StrictMode - one line after the snapshot tolerated the missing field. Report
+    # it and carry on rather than dying on one malformed item out of many.
+    if (-not $snapshot.name) {
+        Add-PlanOperation -Plan $plan -Operation (New-PlanOperation -Resource 'repository' -Name '(unnamed)' `
+            -Action 'resolve' -Status 'blocked' `
+            -Reason 'The API returned a repository with no name, so nothing about it could be recorded or compared.') | Out-Null
+        continue
+    }
+
+    $snapshotByName[$snapshot.name] = $snapshot
+}
+
+
+# Counted from the snapshots, not from the raw API objects.
+#
+# New-GitHubRepositorySnapshot exists to tolerate a payload that omits a field - it
+# fills every property, defaulting to $null - and these two lines were the only place
+# the entry point reached past it into the raw object. Under Set-StrictMode -Version
+# Latest, $_.private on an object without that property THROWS, and inside a
+# Where-Object the scriptblock inherits the strict scope, so the run would die with
+# "The property 'private' cannot be found on this object" and nothing about the
+# context.
+#
+# github.com always sends it, so there is no scenario here today - only GitHub
+# Enterprise Server, a rewriting proxy, or a test double. It is two characters of
+# change to not depend on that.
+$snapshotValues = @($snapshotByName.Values)
+$publicCount = @($snapshotValues | Where-Object { -not $_.private }).Count
+$privateCount = @($snapshotValues | Where-Object { $_.private }).Count
+
 Write-ModuleLog "Account listing: $($liveRepository.Count) repository/ies over $($listing.PageCount) page(s) - $publicCount public, $privateCount private."
 
 if ($privateCount -gt 0) {
@@ -304,15 +342,7 @@ if ($listing.RateLimit -and $null -ne $listing.RateLimit.Remaining) {
     Write-ModuleLog "Rate limit: $($listing.RateLimit.Remaining) of $($listing.RateLimit.Limit) remaining on the $($listing.RateLimit.Resource) budget."
 }
 
-$snapshotByName = @{}
-foreach ($repository in $liveRepository) {
-    $snapshot = New-GitHubRepositorySnapshot -Repository $repository
-    $snapshotByName[$snapshot.name] = $snapshot
-}
 
-# --- plan -----------------------------------------------------------------
-
-$plan = New-Plan -Command $Command -Target $gitHubContext.Owner
 
 # Truncation is the first operation in the plan, not a log line, because a plan that
 # examined only the first N pages of an account cannot be read as complete. The exit
@@ -323,23 +353,56 @@ if ($listing.Truncated) {
         -Reason "The account has more pages of repositories than maximumPageCount ($($gitHubContext.MaximumPageCount)) allows following, so this inventory is incomplete and nothing below it can be read as a full picture. Raise defaults.maximumPageCount in the project context.") | Out-Null
 }
 
-$inScope = @($declaration.repositories)
-if ($RepositoryName.Count -gt 0) {
-    $inScope = @($inScope | Where-Object { $RepositoryName -contains $_.name })
+# inventory reports what exists. plan compares.
+#
+# The description of this script says inventory "makes no reference to the declaration,
+# so it is the honest starting point", and the README repeats it. Neither was true: the
+# only command check past this point was for 'smoke', so the comparison below ran for
+# inventory as well. A first run against the shipped template produced 27 operations,
+# 3 of them blocked because the EXAMPLE-* names do not exist, and exited 2.
+#
+# That is not a cosmetic mismatch. It breaks the rung of the ladder that exists to be
+# run BEFORE a declaration does - the one whose output you derive the declaration from.
+# Somebody generating a repository from this template ran the documented first command
+# and got a failure about repositories they had never heard of.
+#
+# So inventory now records presence and says what it found, consulting nothing. The
+# snapshot every declaration is derived from is in the report either way.
+if ($Command -eq 'inventory') {
+    foreach ($name in @($snapshotByName.Keys | Sort-Object)) {
+        $snapshot = $snapshotByName[$name]
+
+        $note = @()
+        if ($snapshot.private) { $note += 'private' }
+        if (-not $snapshot.license) { $note += 'no licence' }
+        if (@($snapshot.topics).Count -eq 0) { $note += 'no topics' }
+        if ($snapshot.archived) { $note += 'archived' }
+        $detailText = if ($note.Count -gt 0) { ' Notable: ' + ($note -join ', ') + '.' } else { '' }
+
+        Add-PlanOperation -Plan $plan -Operation (New-PlanOperation -Resource 'repository' -Name $name `
+            -Action 'exists' -Status 'ok' `
+            -Reason "Present on the account.$detailText") | Out-Null
+    }
 }
+else {
+    $inScope = @($declaration.repositories)
+    if ($RepositoryName.Count -gt 0) {
+        $inScope = @($inScope | Where-Object { $RepositoryName -contains $_.name })
+    }
 
-foreach ($declared in $inScope) {
-    $snapshot = if ($snapshotByName.ContainsKey($declared.name)) { $snapshotByName[$declared.name] } else { $null }
-    $status = Get-GitHubRepositoryStatus -Declaration $declared -Snapshot $snapshot
+    foreach ($declared in $inScope) {
+        $snapshot = if ($snapshotByName.ContainsKey($declared.name)) { $snapshotByName[$declared.name] } else { $null }
+        $status = Get-GitHubRepositoryStatus -Declaration $declared -Snapshot $snapshot
 
-    Add-PlanOperation -Plan $plan -Resource 'repository' -Name $declared.name -Status $status | Out-Null
+        Add-PlanOperation -Plan $plan -Resource 'repository' -Name $declared.name -Status $status | Out-Null
+    }
 }
 
 # The undeclared half. On an account nobody has ever declared, every repository lands
 # here - which is the finding of the first run, not a fault in it. Suppressed under
 # -RepositoryName, because a filtered run asking about one repository should not
 # answer with a verdict about twenty-three others.
-if ($RepositoryName.Count -eq 0) {
+if ($Command -ne 'inventory' -and $RepositoryName.Count -eq 0) {
     $declaredNameSet = @($declaration.repositories | ForEach-Object { $_.name })
     foreach ($name in @($snapshotByName.Keys | Sort-Object)) {
         if ($declaredNameSet -contains $name) { continue }
