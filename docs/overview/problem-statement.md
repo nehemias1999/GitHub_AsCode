@@ -8,6 +8,9 @@ something to be measured against.
 
 **Audience.** Anyone deciding whether this repository is worth its own maintenance.
 
+Deliberately no numbers from any particular account: the point is the method, and a
+baseline is only useful if it is yours.
+
 ## The shape of it
 
 An account accumulates repositories the way a drawer accumulates cables. Each one made
@@ -20,34 +23,34 @@ sense on the day it was made. Collectively:
 - Nobody can answer *"is my account set up the way I intend?"* — which is the question
   that matters the morning after somebody asks why a repository has no licence.
 
-## Measured on one real account
+## What to measure, and what it tends to show
 
-The numbers below come from a single real account of 24 repositories, and they are here
-for one reason: to show that the API traps in
-[github-notes.md](../reference/github-notes.md) are things that happen rather than
-things that could happen. **Your baseline will be different.** Measure it — the commands
-are in the next section.
+The table worth having is the one about *your* account, and the commands that produce it
+are in the next section. What follows is what that table tends to contain the first time
+anybody runs it, and why each row is worth counting.
 
-| Fact | Number |
+| What to count | Why it matters |
 | --- | --- |
-| Repositories owned | **24** |
-| Public | 15 |
-| **Private** | **9** |
-| With at least one topic | **0** |
-| With a licence | **2** |
-| With `has_projects` enabled | 24 |
-| With `has_wiki` enabled | 22 |
-| With a homepage set | 0 |
+| Repositories owned, total | The denominator for everything else, and the number the wrong endpoint gets wrong |
+| Public against **private** | The one that catches people out — see below |
+| With at least one topic | Zero means nothing is grouped, and nothing can be found by anything but its name |
+| With a licence | Missing on a repository meant to be copied is a real problem, not a tidiness one |
+| With `has_projects` / `has_wiki` enabled | Almost certainly the default rather than a decision |
+| With a homepage set | Cheap discoverability, almost never used |
 
 ### The finding that matters most
 
-That account's profile reported `public_repos: 14`. A search of public repositories
-returned 15. The authenticated listing returned **24**.
+**Private repositories appear in no unauthenticated view of an account, and the endpoint
+that looks right returns only the public ones.**
 
-Nine repositories — a third of the account — were invisible to every unauthenticated
-view. An inventory built on the wrong endpoint is not slightly wrong; it is confidently
-wrong about a third of its subject, and it says nothing to indicate that. That is worse
-than having no inventory at all, because a decision gets made from it.
+An account's profile reports `public_repos`. A search of public repositories returns
+roughly that. `GET /user/repos` with a token returns everything the account owns, and the
+gap between those two numbers is the whole problem: on an account with a meaningful
+number of private repositories, it is a large fraction of the total.
+
+An inventory built on the wrong endpoint is not slightly wrong; it is confidently wrong
+about a fraction of its subject, and it says nothing to indicate that. That is worse than
+having no inventory at all, because a decision gets made from it.
 
 This is not a hypothetical distinction between two endpoints. It is the measured
 difference between `GET /users/{user}/repos` and `GET /user/repos`, and it is why
@@ -56,20 +59,20 @@ asserts that no code path builds a `users/` path.
 
 ### The rest of it
 
-**Nothing was grouped.** Zero topics across 24 repositories means there is no way to ask
-"show me the tooling" or "show me the things I no longer maintain". The groups existed —
-four of them, accumulated in waves — but only in the head of the person who made them.
+**Nothing is grouped.** No topics means no way to ask "show me the tooling" or "show me
+what I no longer maintain". The groups exist — usually several, accumulated in waves
+— but only in the head of the person who made them.
 
-**Defaults were never decided.** `has_projects` was true on all 24 and `has_wiki` on 22.
-Nobody chose that; it is what GitHub creates a repository with. The two with the wiki
-disabled were the tell: somebody once turned it off by hand and then stopped.
+**Defaults were never decided.** Project boards and wikis are enabled because that is what
+GitHub creates a repository with. A handful of exceptions is the tell: somebody once
+turned one off by hand and then stopped.
 
-**Two of 24 had a licence.** One of the ones without it was named *template* — a
-repository whose whole purpose is to be copied, with nothing saying whether copying is
+**Licences are missing, and missing worst where it matters.** A repository named
+*template*, or anything else meant to be copied, with nothing saying whether copying is
 allowed.
 
-**The oldest group was 4–8 KB per repository**: a build definition and a README. No
-licence, no CI, no `.gitignore`. What to do with repositories like that is a real
+**The oldest group is a few kilobytes per repository**: a build definition and a README.
+No licence, no CI, no `.gitignore`. What to do with repositories like that is a real
 decision, and it is deliberately not one this repository makes. It produces the inventory
 the decision gets made from.
 

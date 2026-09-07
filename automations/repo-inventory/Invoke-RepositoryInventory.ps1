@@ -20,11 +20,10 @@
     See docs/adr/0001-write-boundary.md.
 
     THE POINT OF THIS AUTOMATION. It reads GET /user/repos, not
-    GET /users/{owner}/repos. The second one returns public repositories only. On the
-    account where this was first measured, that hid a third of the total - every private
-    repository absent from an inventory that reported itself complete. An inventory whose
-    job is to be the input to a decision is worse than useless when it is quietly
-    short.
+    GET /users/{owner}/repos. The second one returns public repositories only, so every
+    private repository is absent from an inventory that reports itself complete. An
+    inventory whose job is to be the input to a decision is worse than useless when it is
+    quietly short.
 
     How the declaration is produced: not by hand. Run inventory first, read the
     snapshot, and derive the declaration from what was actually found. Then plan

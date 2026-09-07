@@ -154,6 +154,39 @@ Describe 'The template names no particular account' {
         $found | Should -BeNullOrEmpty -Because "a build-level version number is a measurement of one machine, not a requirement:`n$($found -join "`n")"
     }
 
+    It 'publishes no count of the repositories in another account' {
+        # The first genericity pass kept the measured baseline - 24 repositories, 9 of
+        # them private, 2 with a licence - attributed to "one real account" with no
+        # login. That was the wrong call and it was reversed: a count is still data about
+        # somebody's account, and the number of private repositories somebody owns is
+        # not the template's to publish. The `.gitignore` in this repository already
+        # says as much about names; a count is the same information, weaker.
+        #
+        # What replaced it is the METHOD - problem-statement.md now carries the gh
+        # commands that produce the reader's own table - which is more useful anyway,
+        # because a baseline is only worth having if it is yours.
+        #
+        # Two shapes, both of which actually occurred. A bolded bare integer in a
+        # Markdown table cell is what a published measurement looks like; counts stated
+        # in prose as "N public" or "N private" are the other half. Deliberately narrow:
+        # ordinary numbers in documentation are fine, and the phase table in
+        # using-this-template.md uses unbolded digits precisely so it does not trip
+        # here.
+        $shape = @(
+            '\|[^|]*\*\*[0-9]+\*\*[^|]*\|'
+            '\b[0-9]+ (public|private)\b'
+        )
+
+        $found = New-Object System.Collections.Generic.List[string]
+        foreach ($pattern in $shape) {
+            foreach ($line in (Find-InTrackedFile -Pattern $pattern)) {
+                if ($line -match '\.md:') { $found.Add($line) }
+            }
+        }
+
+        $found | Should -BeNullOrEmpty -Because "documentation must not publish a count of another account's repositories:`n$($found -join "`n")"
+    }
+
     It 'reports a measurement as belonging to one account rather than to the reader' {
         # The baseline numbers are kept on purpose - they are the evidence that the API
         # traps are real. What they must not do is address the reader as though the

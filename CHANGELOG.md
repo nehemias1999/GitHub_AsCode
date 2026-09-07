@@ -108,22 +108,22 @@ deliberate rather than as drift.
 
 ### Verified against a live account
 
-Run against a real account of 24 repositories:
+Run against a real account:
 
-- `plan` reports `ok 24, pending 0, warning 0, protected 0, blocked 0`, exit 0 -
-  **identical across two consecutive runs**, which is the idempotency acceptance
-  criterion rather than a summary.
-- The listing reports 15 public and 9 private, matching the measured baseline. The
-  endpoint guard holds.
-- **Pagination was exercised for real**, not only against fixtures: forcing
-  `pageSize: 5` made the run follow four `Link` headers over five pages and return the
-  same 24 repositories with the same plan. Paginating does not change the answer.
-- **Truncation was exercised for real**: forcing `maximumPageCount: 2` produced
-  `blocked 15` and exit 2, with the `accountListing` operation naming the cause. It did
-  not report the 10 repositories it had seen as a complete account.
-- The classic-token warning fires on the `gh` CLI token, and the first run against the
-  shipped template correctly reported the three `EXAMPLE-*` names as `resolve`/`blocked`
-  rather than `create`.
+- `plan` reports every declared repository as `ok`, with `pending 0` and `blocked 0`,
+  exit 0 - **identical across two consecutive runs**, which is the idempotency
+  acceptance criterion rather than a summary.
+- The listing reports both public and private repositories, and the private count is
+  non-zero. The endpoint guard holds.
+- **Pagination was exercised for real**, not only against fixtures: forcing a small
+  `pageSize` made the run follow several `Link` headers over multiple pages and return
+  the same repositories with the same plan. Paginating does not change the answer.
+- **Truncation was exercised for real**: forcing a low `maximumPageCount` produced a
+  blocked plan and exit 2, with the `accountListing` operation naming the cause. It did
+  not report the repositories it had already seen as a complete account.
+- The classic-token warning fires on a classic token, and the first run against the
+  shipped template correctly reported its `EXAMPLE-*` names as `resolve`/`blocked` rather
+  than `create`.
 
 ### Known limitations
 

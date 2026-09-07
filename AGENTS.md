@@ -20,8 +20,8 @@ test rather than by trust.
    place to audit, one place a write could ever be added.
 
 4. **The account listing comes from `GET /user/repos`, never `GET /users/{user}/repos`.**
-   The second returns public repositories only - on the account where this was first
-   measured it hid a third of the total. No string literal anywhere may begin `users/`.
+   The second returns public repositories only, so it omits every private repository.
+   No string literal anywhere may begin `users/`.
 
 5. **A collection is written as a union, never a replacement.** `PUT /topics` replaces
    everything. Undeclared members are reported as `protected`, not removed.
