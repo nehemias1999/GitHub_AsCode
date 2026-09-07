@@ -7,11 +7,11 @@
 Three ways to authenticate against the GitHub API: a classic personal access token, a
 fine-grained one, or a GitHub App.
 
-The account this was written for currently authenticates with an OAuth token holding
-`gist, read:org, repo, workflow`. It reads everything needed. It also carries admin over
-every repository the account owns, which includes branch protection - the one thing
-[scope-and-limits.md](../overview/scope-and-limits.md) says must never be written from
-here.
+The usual starting point is a classic OAuth token carrying `repo` - the scope the `gh`
+CLI asks for, and the one most people already have. It reads everything needed. It also
+carries admin over every repository the account owns, which includes branch protection -
+the one thing [scope-and-limits.md](../overview/scope-and-limits.md) says must never be
+written from here.
 
 ## Decision
 

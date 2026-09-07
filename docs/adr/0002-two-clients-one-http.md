@@ -8,7 +8,7 @@ This repository needs both of GitHub's APIs. REST v3 covers repository metadata,
 labels and file contents. **Projects v2 exists only in GraphQL v4** - there is no REST
 equivalent, so the choice is not available.
 
-Two rules inherited from the sibling repositories pull in opposite directions:
+Two inherited rules pull in opposite directions:
 
 - `Invoke-WebRequest` lives in exactly one file, so there is one place to audit and one
   place a write could ever be added.
@@ -54,8 +54,7 @@ meaning.
 
 The `-StatusMessage` parameter is how that works: the status-code-to-guidance map is
 passed **as data** from `GitHub.Rest`, so a 403 can name the missing fine-grained
-permission without the transport knowing what a permission is. The same mechanism is
-already used by the sibling repository, so this is a reuse rather than an invention.
+permission without the transport knowing what a permission is.
 
 The cost is one extra hop, and the discipline of deciding for each new concern which
 side of the line it falls on. The rate limit case is the worked example: reading the

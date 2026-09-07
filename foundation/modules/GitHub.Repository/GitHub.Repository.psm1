@@ -114,11 +114,10 @@ function Get-GitHubTopicUnion {
 
         PUT /repos/{owner}/{repo}/topics replaces the entire collection and there is
         no per-topic route. The obvious implementation - send the declared topics -
-        deletes every topic that was added by hand and never written down. On the
-        account this repository was written for, that is a real risk rather than a
-        hypothetical one: the five Pipeline_* repositories have not been touched since
-        February, so whatever is on them is exactly the kind of thing nobody
-        remembers declaring.
+        deletes every topic that was added by hand and never written down. That is a
+        real risk rather than a hypothetical one on any account with older repositories:
+        whatever is on a repository nobody has touched in months is exactly the kind of
+        thing nobody remembers declaring.
 
         So the payload is the union, and the result also says which live topics were
         not declared, so the plan can report them as preserved rather than silently
@@ -178,8 +177,8 @@ function New-GitHubRepositorySnapshot {
 
     .DESCRIPTION
         The API returns around 80 properties per repository, most of them URL
-        templates. Carrying all of them into a report makes a 24-repository inventory
-        an unreadable megabyte, and makes a diff between two runs meaningless.
+        templates. Carrying all of them into a report makes even a small inventory an
+        unreadable megabyte, and makes a diff between two runs meaningless.
 
         A property the API did not send becomes $null rather than being absent, so
         every snapshot has the same shape and a report writer never has to test for a

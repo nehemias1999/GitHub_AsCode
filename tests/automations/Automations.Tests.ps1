@@ -252,10 +252,10 @@ Describe 'No code path can write to GitHub' {
 
     It 'reads the account listing from the endpoint that includes private repositories' {
         # THE endpoint guard, and the measured reason this repository exists.
-        # GET /users/{user}/repos returns public repositories only. On this account
-        # the public listing reports 15 and the authenticated one reports 24: nine
-        # private repositories, absent in silence, from the inventory whose whole
-        # purpose is to be complete enough to decide from.
+        # GET /users/{user}/repos returns public repositories only. On the account where
+        # this was first measured it hid a third of the total: every private repository,
+        # absent in silence, from the inventory whose whole purpose is to be complete
+        # enough to decide from.
         foreach ($file in $script:AllSource) {
             $ast = Get-SourceAst -Path $file.FullName
 

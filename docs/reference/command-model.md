@@ -29,9 +29,9 @@ meaning. One command, one intent.
 
 ## Two axes, not one
 
-Reused verbatim from `Jenkins_AsCode`, in
-`foundation/modules/GitHubAsCode.Plan/GitHubAsCode.Plan.psm1`. Confusing the two axes
-is the easiest mistake to make here, so they are stated separately.
+Defined in `foundation/modules/GitHubAsCode.Plan/GitHubAsCode.Plan.psm1`, and reused
+verbatim from the sibling projects rather than reinvented. Confusing the two axes is the
+easiest mistake to make here, so they are stated separately.
 
 ### Status - may this proceed?
 

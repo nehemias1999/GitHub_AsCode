@@ -108,7 +108,7 @@ $rules = @(
         Allow       = @()
     }
     [pscustomobject]@{
-        # Inherited from Jenkins_AsCode, the rule above covered only the five gh*_
+        # As inherited from a sibling project, the rule above covered only the five gh*_
         # prefixes - the classic shapes. It does not match github_pat_, which is the
         # FINE-GRAINED prefix, and fine-grained is the token type this repository
         # recommends and documents (docs/reference/security-model.md). So the one

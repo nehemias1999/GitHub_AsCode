@@ -97,11 +97,14 @@ its own template, on both `powershell` and `pwsh`, with no network and no creden
 `PSUseCompatibleSyntax` is configured for 5.1 and 7.0, and warnings fail the gate, so
 syntax incompatibility is caught statically wherever the suite runs.
 
-Actually *executing* on both is a CI-only property on this workstation: PowerShell 7 is
-not installed here, so a local run exercises the 5.1 floor and nothing else. The CI
-matrix runs `powershell` and `pwsh`, and tests that spawn a child process use
-`Get-PowerShellHostPath` - the host running the suite - so a run under 7 genuinely
+Actually *executing* on both is often a CI-only property. A Windows machine may ship
+Windows PowerShell 5.1 and nothing else, in which case a local run exercises the floor
+alone. The CI matrix runs `powershell` and `pwsh`, and tests that spawn a child process
+use `Get-PowerShellHostPath` - the host running the suite - so a run under 7 genuinely
 tests 7 rather than shelling out to 5.1 and reporting a pass for both.
+
+If you work on this repository, check which engines your machine actually has before
+concluding that a green local run covers the declared support floor.
 
 ## Documentation is tested
 

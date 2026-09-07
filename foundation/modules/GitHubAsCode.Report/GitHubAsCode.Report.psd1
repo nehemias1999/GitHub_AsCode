@@ -2,9 +2,9 @@
     RootModule        = 'GitHubAsCode.Report.psm1'
     ModuleVersion     = '0.1.0'
     GUID              = 'ff6a88d0-6319-44db-b1f4-d14acbdc60e6'
-    Author            = 'nehemias1999'
+    Author            = 'TEMPLATE-AUTHOR'
     CompanyName       = 'Unspecified'
-    Copyright         = '(c) 2026 nehemias1999. Released under the MIT License.'
+    Copyright         = '(c) TEMPLATE-AUTHOR. Released under the MIT License.'
     Description       = 'Evidence writing: plan reports as JSON and Markdown, with redaction by property name and masking by value applied at the writer rather than at each call site.'
     PowerShellVersion = '5.1'
 

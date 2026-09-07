@@ -12,8 +12,8 @@ The declarative instinct says: the declaration is the desired state, so make liv
 match it. Applied to those endpoints, that instinct deletes things.
 
 It deletes them where it hurts most, too. The declaration is written by someone reading
-an inventory *today*; the topics on a repository nobody has touched since February were
-added by someone at the time, for a reason nobody wrote down. The declaration's silence
+an inventory *today*; the topics on a repository nobody has touched in a year were added
+by someone at the time, for a reason nobody wrote down. The declaration's silence
 about them is not a decision that they should go.
 
 ## Decision

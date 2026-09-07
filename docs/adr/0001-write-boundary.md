@@ -4,16 +4,17 @@
 
 ## Context
 
-`Jenkins_AsCode` is read-only by construction, and can afford an absolute guard: its
-HTTP layer has no `-Method` parameter, and a test asserts the word appears nowhere.
-`ADO_AsCode` writes, and carries a plan/apply model with confirmations and receipts.
+The pattern this repository comes from has two kinds of tool. A read-only one can
+afford an absolute guard: its HTTP layer has no `-Method` parameter, and a test asserts
+the word appears nowhere. A writing one carries a plan/apply model with confirmations and
+receipts.
 
 This repository will end up in the second group. It starts in the first.
 
 The tempting shortcut is to build the write machinery now, while the design is fresh,
 and leave it unused until phase 3. That is precisely the wrong order: unused write
 machinery is machinery nothing tests and nothing guards, sitting one call site away
-from an account with 24 repositories on it.
+from somebody's entire account.
 
 ## Decision
 

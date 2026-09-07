@@ -2,24 +2,24 @@
   "$schema": "../schemas/repositories.schema.json",
   "_readme": "This is the TEMPLATE. Produce the active file by RENAMING it to repositories.json, not by copying its contents: repositories.json is the name .gitignore excludes, and a copy invites a differently named file full of real repository names that Git happily tracks.",
   "classes": {
-    "tooling": {
-      "description": "Repositories that are themselves tools, held to the full standard: licence, CI, changelog."
+    "service": {
+      "description": "Deployable applications. Held to the full standard: licence, CI, changelog."
     },
-    "pipeline": {
-      "description": "Older single-purpose pipeline repositories, kept for reference."
+    "library": {
+      "description": "Code consumed by other repositories. Needs a licence above all."
     },
-    "practice": {
-      "description": "Learning and portfolio work."
+    "tool": {
+      "description": "Internal tooling and scripts."
     },
-    "coursework": {
-      "description": "University work. Usually private, and held to the lightest standard."
+    "archived": {
+      "description": "Kept for reference, not developed. Held to the lightest standard."
     }
   },
   "repositories": [
     {
-      "name": "EXAMPLE-tool",
-      "class": "tooling",
-      "description": "EXAMPLE - what this tool does, in one sentence.",
+      "name": "EXAMPLE-service",
+      "class": "service",
+      "description": "EXAMPLE - what this service does, in one sentence.",
       "homepage": "",
       "topics": [
         "example-topic",
@@ -27,16 +27,16 @@
       ]
     },
     {
-      "name": "EXAMPLE-pipeline",
-      "class": "pipeline",
-      "description": "EXAMPLE - what this pipeline deploys, and to where.",
+      "name": "EXAMPLE-tool",
+      "class": "tool",
+      "description": "EXAMPLE - what this tool does, and for whom.",
       "topics": [
         "example-topic"
       ]
     },
     {
-      "name": "EXAMPLE-coursework",
-      "class": "coursework"
+      "name": "EXAMPLE-archived",
+      "class": "archived"
     }
   ]
 }

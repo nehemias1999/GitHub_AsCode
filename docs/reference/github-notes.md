@@ -10,7 +10,7 @@ is not.
 
 Each row is the same shape: what the API does, what a reasonable person would write,
 what that destroys, and the mitigation. Where a row says *measured*, it was observed
-against the live account on 2026-09-07 rather than read in documentation.
+against a live account rather than read in the documentation.
 
 ## The table
 
@@ -20,7 +20,7 @@ against the live account on 2026-09-07 rather than read in documentation.
 | --- | --- |
 | **The API** | `GET /users/{user}/repos` returns **public repositories only**. The private ones exist solely behind `GET /user/repos` with an authenticated token. |
 | **The obvious implementation** | Enumerate the account through the endpoint that has the user's name in it. |
-| **What it destroys** | Nothing - it destroys *trust*, which is worse here. **Measured: the public endpoint returns 15 repositories and the authenticated one returns 24.** Nine repositories vanish from an inventory that reports itself complete, and a decision gets made from it. |
+| **What it destroys** | Nothing - it destroys *trust*, which is worse here. **Measured: the public endpoint hid a third of the account.** Every private repository vanishes from an inventory that reports itself complete, and a decision gets made from it. |
 | **Mitigation** | `Get-GitHubOwnedRepository` uses `/user/repos` with `affiliation=owner`. An absence test asserts no string literal anywhere in the repository begins `users/`. See [ADR 0005](../adr/0005-authenticated-account-listing.md). |
 
 ### 2. Topics are a replace-the-whole-collection API
@@ -29,7 +29,7 @@ against the live account on 2026-09-07 rather than read in documentation.
 | --- | --- |
 | **The API** | `PUT /repos/{owner}/{repo}/topics` replaces the entire collection. There is no per-topic route. |
 | **The obvious implementation** | Send the declared topics. |
-| **What it destroys** | Every topic somebody added and nobody wrote down. Concretely: the five `pipeline` repositories have not been touched since February 2026, so whatever is on them is exactly what nobody remembers declaring. |
+| **What it destroys** | Every topic somebody added and nobody wrote down. Concretely: whatever sits on a repository nobody has touched in months is exactly what nobody remembers declaring. |
 | **Mitigation** | `Get-GitHubTopicUnion` sends the union of live and declared, and reports the undeclared ones as `protected`. Removal is `reconcile`'s job, behind its own confirmation, and `reconcile` does not exist. |
 
 ### 3. Branch protection replaces the whole object
@@ -84,7 +84,7 @@ against the live account on 2026-09-07 rather than read in documentation.
 | **The API** | `PATCH /repos/{owner}/{repo}/labels/{name}` with `new_name`. |
 | **The obvious implementation** | "Let us normalise the label names." |
 | **What it destroys** | The old name across the entire issue and pull request history, in one call, with no batch undo. |
-| **Mitigation** | `new_name` is not implemented. Same criterion as `rename` in `ADO_AsCode`: an operation whose blast radius is not bounded by the plan. |
+| **Mitigation** | `new_name` is not implemented. Same criterion as a rename in the sibling projects: an operation whose blast radius is not bounded by the plan. |
 
 ### 9. GraphQL reports failure with HTTP 200
 
@@ -109,7 +109,7 @@ against the live account on 2026-09-07 rather than read in documentation.
 | | |
 | --- | --- |
 | **The API** | The primary budget is 5000 requests an hour, visible in `x-ratelimit-remaining`. The **secondary** limits are undocumented ceilings on bursts of writes against one repository, and they answer 403 or 429 with `retry-after`. |
-| **The obvious implementation** | Loop the apply over 24 repositories, retry immediately on a 403. |
+| **The obvious implementation** | Loop the apply over every repository, retry immediately on a 403. |
 | **What it destroys** | The run stops halfway, having changed half the repositories, with no record of which half. Retrying immediately escalates a secondary limit into a longer block. |
 | **Mitigation** | `retry-after` is honoured; `minimumWriteIntervalMilliseconds` spaces writes; the run aborts **before starting** if `x-ratelimit-remaining` is below the threshold; and a receipt is written after **every** completed operation, so an interrupted run is a resume rather than a guess. |
 

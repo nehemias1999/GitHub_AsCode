@@ -20,7 +20,7 @@ An account accumulates repositories the way a drawer accumulates cables. Each on
 sense on the day it was made; collectively, nothing states how any of them should be
 configured, and nobody can answer *"is my account set up the way I intend?"*
 
-Measured against the account this was written for, on 2026-09-07:
+Measured against one real account, to show the shape of the problem:
 
 | Fact | Number |
 | --- | --- |
@@ -39,14 +39,15 @@ Each has an implementation that appears to work and destroys something.
 
 | The API behaviour | The obvious implementation | What it destroys |
 | --- | --- | --- |
-| `GET /users/{user}/repos` returns **public repositories only** | Enumerate the account through the endpoint with the user's name in it | Nothing visible - which is the problem. **Measured: 15 repositories instead of 24.** Nine private ones vanish from an inventory that reports itself complete, and a decision gets made from it |
+| `GET /users/{user}/repos` returns **public repositories only** | Enumerate the account through the endpoint with the user's name in it | Nothing visible - which is the problem. **Measured: it hid a third of the account.** Every private repository vanishes from an inventory that reports itself complete, and a decision gets made from it |
 | `PUT /repos/{o}/{r}/topics` replaces the whole collection - no per-topic route | Send the declared topics | Every topic somebody added and nobody wrote down |
 | `enforce_admins` plus one required review, on a single-owner repository | "Let us protect `main` properly" | `main` becomes unmergeable. You cannot approve your own pull request, admin enforcement admits no bypass, and the only way out is the web interface |
 | A GraphQL error arrives as **HTTP 200** with an `errors` array | `if ($status -eq 200) { use $data }` | A `FORBIDDEN` reads as an empty result, so the report states a fabricated fact instead of admitting it could not read |
 
 [docs/reference/github-notes.md](docs/reference/github-notes.md) documents fourteen such
 behaviours, each with the symptom it produces. Two are marked *measured* rather than
-*documented*, because they were observed live against this account.
+*documented*, because they were observed live against a real account rather than read in
+the documentation.
 
 ## Approach
 
@@ -181,7 +182,7 @@ means the tool is not reading the account the same way twice.
 .\scripts\Invoke-Tests.ps1
 ```
 
-Parse check, PSScriptAnalyzer (warnings fail), 79 Pester tests, and a sensitive data
+Parse check, PSScriptAnalyzer (warnings fail), the Pester suite, and a sensitive data
 scan. Continuous integration runs the identical command on `windows-latest` under both
 `powershell` and `pwsh`, so "it passed locally" and "it passed in CI" mean the same
 thing.
@@ -241,11 +242,25 @@ Actions secret, and applying branch protection.
 [docs/overview/scope-and-limits.md](docs/overview/scope-and-limits.md) gives the reason
 for each.
 
+## Using this template
+
+This repository is a GitHub **template**. Generate one from it, then follow
+[docs/guides/using-this-template.md](docs/guides/using-this-template.md): replace
+`TEMPLATE-AUTHOR` in the module manifests, put your name on the `LICENSE`, define the
+repository classes that match your account, and derive your declaration from your own
+first `inventory` run.
+
+Everything in `docs/` describes the method. The numbers in it come from one real account
+and are there to show that the API traps are real rather than theoretical - your baseline
+will be different, and [problem-statement.md](docs/overview/problem-statement.md) has the
+commands to measure it.
+
 ## Notes
 
-A sibling of [Jenkins_AsCode](https://github.com/nehemias1999/Jenkins_AsCode) and
-[ADO_AsCode](https://github.com/nehemias1999/ADO_AsCode), reusing the same foundation,
-command ladder and automation contract.
+The foundation, command ladder and automation contract come from two sibling projects
+that apply the same pattern to a Jenkins controller and to Azure DevOps. The provenance
+is recorded where it explains a decision - see `AGENTS.md` and the changelog - because a
+rule without its reason is the first thing somebody removes.
 
 Licensed under the [MIT License](LICENSE). Security policy:
 [SECURITY.md](SECURITY.md). Contributing: [CONTRIBUTING.md](CONTRIBUTING.md).
