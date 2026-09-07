@@ -57,7 +57,15 @@ jobs:
       run:
         shell: ${{ matrix.shell }}
     steps:
-      - uses: actions/checkout@v4
+      # Pinned to a commit, not a tag. A tag is mutable: whoever controls the
+      # repository can move v4 to different code, and this workflow runs on every pull
+      # request. actions/checkout is a first-party action, so the risk is small - but a
+      # template that spends a page arguing for the least-privileged possible token
+      # should not then trust a moving reference.
+      #
+      # The tag stays in the comment, because a bare SHA is unreviewable: nobody can
+      # tell from 11d5960 whether it is ahead of or behind the version they expect.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Install the test-only dependencies
         run: |
@@ -67,7 +75,16 @@ jobs:
           # the result as if it were tested. Invoke-Tests.ps1 falls back to a newer
           # major with a warning if it has to; CI should not have to.
           Install-Module Pester -MinimumVersion 5.5 -MaximumVersion 5.99.99 -Scope CurrentUser -Force -SkipPublisherCheck
-          Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
+          # Bounded, for the same reason Pester is on the line above - and the
+          # inconsistency was the finding: Pester carried a carefully written
+          # justification for its upper bound while PSScriptAnalyzer, installed two
+          # lines later, took whatever PSGallery had that morning.
+          #
+          # It matters more here than it would elsewhere, because
+          # PSScriptAnalyzerSettings.psd1 deliberately excludes nothing. Any rule a new
+          # major adds fires immediately and fails the gate on code that did not
+          # change - which is a build that breaks on a day nobody committed.
+          Install-Module PSScriptAnalyzer -MinimumVersion 1.21 -MaximumVersion 1.99.99 -Scope CurrentUser -Force
 
       - name: Seed the deny-term layer of the secret gate
         env:
