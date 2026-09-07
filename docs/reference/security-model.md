@@ -63,7 +63,11 @@ harmless.
 
 **Expiry is warned about.** Fine-grained tokens send
 `github-authentication-token-expiration`. `inventory` reports the days remaining and
-`plan` warns below `tokenExpiryWarningDays`. Without this, the first symptom of an
+`plan` warns below `tokenExpiryWarningDays`. It lands in the report under
+`detail.authentication`, alongside whether the token is classic and which permissions it
+carries - none of which is secret, and all of which is the evidence somebody needs when
+a scheduled run starts failing. That block was named `detail.token` until the redaction
+layer, which matches by property name, deleted it on every run. Without this, the first symptom of an
 expired token is a 401 that reads exactly like revocation, which sends the reader
 looking in the wrong place. `validate` is offline, cannot know, and does not pretend to.
 

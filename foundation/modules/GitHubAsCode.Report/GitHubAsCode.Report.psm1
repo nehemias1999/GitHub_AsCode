@@ -48,6 +48,21 @@ $script:SensitiveNameFragment = @(
 # Path inventory, the very data the report exists to carry, with the redaction
 # marker. Redaction that destroys evidence is not failing safe; it is failing
 # quietly, which is worse.
+#
+# IT HAPPENED AGAIN, with 'token' in the list below rather than 'pat' above.
+# repo-inventory built a block of evidence about the token's SHAPE - classic or
+# fine-grained, which permissions, how many days until it expires - named it
+# 'token', and this function replaced the entire object with the string
+# "[redacted]" on the way to the report. Nothing in it was secret; the value never
+# went near it. The report promised the expiry and then deleted the only durable
+# record of it.
+#
+# The lesson the 'pat' case taught was "anchor short fragments". The lesson this
+# one adds is that a NAME can be sensitive-looking while the thing under it is
+# evidence, and the mechanism cannot tell the difference. The caller carries the
+# burden: name the field for what it holds rather than for the subject it concerns,
+# and assert in a test that it survives - see
+# tests/foundation/GitHubAsCode.Secrets.Tests.ps1.
 $script:SensitiveNameSegment = @(
     'pat', 'key', 'sas', 'cert', 'auth', 'bearer'
 ) -join '|'

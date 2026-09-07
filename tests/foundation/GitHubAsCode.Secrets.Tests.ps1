@@ -186,3 +186,55 @@ Describe 'New-BearerAuthorizationHeader' {
             Should -Be "Bearer $script:Classic"
     }
 }
+
+Describe 'Remove-SensitiveValue' {
+
+    It 'does not destroy the token evidence the report exists to carry' {
+        # THE regression, and it was live: repo-inventory named its block of evidence
+        # about the token's shape 'token', and this function - which matches by property
+        # NAME - replaced the whole object with the string "[redacted]" on the way to the
+        # report. Confirmed in a real artefact, where detail.token was that string while
+        # listing, rateLimit and finding beside it survived.
+        #
+        # Nothing in the block is secret. isClassic is a fact about the token's TYPE,
+        # scope lists permission names, and the two expiry fields are dates. The value
+        # never goes near it. Meanwhile security-model.md promises that inventory reports
+        # the days remaining - so the report promised the evidence and deleted it.
+        $detail = [pscustomobject]@{
+            authentication = [pscustomobject]@{
+                isClassic       = $true
+                scope           = @('metadata:read')
+                expiresUtc      = '2099-12-31T23:59:59.0000000Z'
+                daysUntilExpiry = 5
+            }
+        }
+
+        $clean = Remove-SensitiveValue -InputObject $detail
+
+        $clean.authentication | Should -Not -BeOfType [string]
+        $clean.authentication.daysUntilExpiry | Should -Be 5
+        $clean.authentication.isClassic | Should -BeTrue
+        @($clean.authentication.scope) | Should -Be @('metadata:read')
+    }
+
+    It 'still destroys a block whose name really is credential-shaped' {
+        # The complement, so the fix above cannot be mistaken for weakening redaction.
+        # A property actually named token, authorization or password must still go.
+        foreach ($name in @('token', 'authorization', 'password', 'apiKey')) {
+            $probe = [pscustomobject]@{ $name = 'some-real-value' }
+
+            (Remove-SensitiveValue -InputObject $probe).$name | Should -Be '[redacted]' -Because "$name must still be redacted"
+        }
+    }
+
+    It 'redacts a name this repository might reasonably have chosen instead' {
+        # Measured, not assumed. These were the candidates for the rename, and all of
+        # them are destroyed - which is why the field is called 'authentication' and why
+        # renaming it back would silently delete the evidence again.
+        foreach ($name in @('tokenShape', 'tokenInfo', 'credentialShape', 'auth')) {
+            $probe = [pscustomobject]@{ $name = [pscustomobject]@{ daysUntilExpiry = 5 } }
+
+            (Remove-SensitiveValue -InputObject $probe).$name | Should -Be '[redacted]' -Because "$name is destroyed, so it is not a usable name for evidence"
+        }
+    }
+}
