@@ -421,3 +421,49 @@ Describe 'The project context declares nothing it silently ignores' {
         $undocumented | Should -BeNullOrEmpty -Because "a default nothing reads must say so in its schema description, or be implemented:`n$($undocumented -join ', ')"
     }
 }
+
+Describe 'An environment file the operator named is not optional' {
+
+    It 'fails naming the file when -EnvFile does not exist' {
+        # -Optional was passed unconditionally, so a mistyped -EnvFile was skipped in
+        # silence. The benign consequence is a confusing error three steps later. The bad
+        # one: if the process already has the variables set - a .env sourced in an earlier
+        # session, or user-level variables pointing at another account - the run completes
+        # SUCCESSFULLY against the wrong account and reports success.
+        #
+        # This repository already refuses that shape elsewhere:
+        # Resolve-GitHubAsCodeDeclaration returns UsedTemplate and the entry point warns
+        # loudly, so a run never checks the template while the operator believes it
+        # checked their declaration. Same reasoning, not previously applied here.
+        $entryPoint = Join-Path (Get-RepositoryRoot) 'automations/repo-inventory/Invoke-RepositoryInventory.ps1'
+        $missing = Join-Path ([System.IO.Path]::GetTempPath()) ("no-such-" + [guid]::NewGuid() + ".env")
+
+        # The child writes a full error record to stderr, and 2>&1 turns each line into
+        # an ErrorRecord in this process - which is a terminating error under the
+        # container's preference. The other cases in this file capture a child that
+        # exits non-zero after a WARNING, so they never hit this. Captured explicitly
+        # rather than by widening the preference, which would hide a genuine failure.
+        $output = @()
+        try {
+            $output = & (Get-PowerShellHostPath) -NoProfile -ExecutionPolicy Bypass -File $entryPoint -Command inventory -EnvFile $missing 2>&1
+        }
+        catch {
+            $output = @($_.Exception.Message)
+        }
+
+        ($output -join "`n") | Should -Match 'Environment file not found'
+    }
+
+    It 'still tolerates a missing .env when no -EnvFile was given' {
+        # The complement, and the reason the switch is conditional rather than removed: a
+        # fresh clone has no .env, and failing there would make the first run of a
+        # generated repository fail on a file the reader has not been told to create yet.
+        # The useful error names the missing VARIABLE instead.
+        $entryPoint = Join-Path (Get-RepositoryRoot) 'automations/repo-inventory/Invoke-RepositoryInventory.ps1'
+
+        $output = & (Get-PowerShellHostPath) -NoProfile -ExecutionPolicy Bypass -File $entryPoint -Command validate 2>&1
+
+        $LASTEXITCODE | Should -Be 0 -Because ($output -join [Environment]::NewLine)
+        ($output -join "`n") | Should -Not -Match 'Environment file not found'
+    }
+}

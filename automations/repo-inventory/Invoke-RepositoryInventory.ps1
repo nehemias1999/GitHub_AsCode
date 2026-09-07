@@ -223,8 +223,27 @@ if ($Command -eq 'validate') {
 
 # --- Live state -----------------------------------------------------------
 
-$environmentFiles = if ($EnvFile) { $EnvFile } else { @((Join-Path $repositoryRoot '.env')) }
-Import-GitHubAsCodeEnvironment -Path $environmentFiles -Optional
+# -Optional applies to the DEFAULT path only, and the distinction matters.
+#
+# A fresh clone has no .env, so treating the default as optional is right: the run then
+# fails later with a message naming the variable that is missing, which is the useful
+# error. But -Optional was passed unconditionally, so an -EnvFile the operator typed by
+# hand was skipped in silence too.
+#
+# The benign version of that is a confusing error three steps later. The bad version is
+# this: if the process already has the variables set - a .env loaded in an earlier
+# session of the same console, or user-level variables pointing at another account -
+# then a mistyped -EnvFile is skipped, Get-GitHubAsCodeRequiredValue finds values
+# anyway, and the run completes successfully AGAINST THE WRONG ACCOUNT. It reports
+# success, and the operator believes they inventoried what they asked for.
+#
+# This repository already refuses that pattern elsewhere: Resolve-GitHubAsCodeDeclaration
+# returns UsedTemplate and the warning above shouts about it, precisely so a run never
+# checks the template in silence while the operator believes it checked their
+# declaration. Same reasoning, and it had not been applied here.
+$usingDefaultEnvFile = -not $PSBoundParameters.ContainsKey('EnvFile')
+$environmentFiles = if ($usingDefaultEnvFile) { @((Join-Path $repositoryRoot '.env')) } else { $EnvFile }
+Import-GitHubAsCodeEnvironment -Path $environmentFiles -Optional:$usingDefaultEnvFile
 
 $gitHubContext = Get-GitHubContext -Context $projectContext
 Write-ModuleLog "Account: $($gitHubContext.Owner) at $($gitHubContext.BaseUrl), token from $($gitHubContext.TokenEnvironmentName)."
