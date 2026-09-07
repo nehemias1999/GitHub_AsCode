@@ -32,11 +32,32 @@ BeforeAll {
             Where-Object { Test-Path -LiteralPath $_ }
     )
 
-    # LICENSE is the one file that names a person on purpose. The copyright holder of an
-    # MIT licence is a legal fact about who wrote the code, and removing it would make
-    # the template worse rather than more generic. Every other exemption needs the same
-    # standard of justification, written here.
-    $script:Exempt = @('LICENSE')
+    # Two exemptions, each with its reason. Every future one needs the same standard of
+    # justification, written here, and the last test in this file asserts the list has
+    # not grown past what is documented.
+    #
+    # LICENSE names a person on purpose. The copyright holder of an MIT licence is a
+    # legal fact about who wrote the code, and removing it would make the template worse
+    # rather than more generic.
+    #
+    # This file exempts itself, and that is not a convenience. A guard has to be able to
+    # NAME what it forbids - the comments below quote a build-level version number and
+    # the exact phrasing that misattributes a measurement, because a rule whose reason
+    # cannot be written down is a rule somebody deletes.
+    #
+    # This exact mistake was made twice in this repository before it was understood. The
+    # inherited "network I/O in exactly one place" guard matched raw file content, so it
+    # fired on the comment in GitHub.Rest.psm1 that EXPLAINS where Invoke-WebRequest
+    # lives - satisfiable only by deleting the explanation. That one was fixed by reading
+    # the parse tree. Then this file was written, and on its first CI run it failed on
+    # its own three explanatory comments.
+    #
+    # The parse-tree fix does not transfer: most of what this guard scans is Markdown,
+    # which has no AST. Stripping comment lines before matching was the other candidate
+    # and is worse - a workstation path or a real account URL inside a code comment is
+    # exactly the kind of tie PR 1 removed from six files, so blinding the guard to
+    # comments would open a hole in the place it just cleaned.
+    $script:Exempt = @('LICENSE', 'Genericity.Tests.ps1')
 
     function Get-ScannedFile {
         <#
@@ -172,6 +193,18 @@ Describe 'The template asks to be personalised' {
         Test-Path -LiteralPath $guide | Should -BeTrue
 
         (Get-Content -LiteralPath $guide -Raw) | Should -Match 'TEMPLATE-AUTHOR'
+    }
+
+    It 'exempts exactly the two files whose exemption is written down' {
+        # An allowlist nothing checks grows. Every entry above carries a paragraph
+        # explaining why, and this is what forces the next person to write theirs: a
+        # third exemption fails here until this assertion is updated deliberately,
+        # in the same commit, next to the reason.
+        #
+        # It is the same reasoning as PSScriptAnalyzerSettings.psd1 shipping with no
+        # exclusions - an exemption that looks answered is worse than one that looks
+        # missing.
+        @($script:Exempt) | Should -Be @('LICENSE', 'Genericity.Tests.ps1')
     }
 
     It 'keeps the licence holder out of the placeholder scheme' {
