@@ -32,6 +32,11 @@ $ErrorActionPreference = 'Stop'
 #
 # Long, unambiguous tokens match anywhere in the name. Case-insensitivity is what
 # makes these cover camelCase too: 'sshkey' matches 'sshKey'.
+# Set the first time a transcript write fails, so the warning is emitted once per run
+# rather than once per line. Module scope because the transcript writer is called from
+# every log line in a run.
+$script:RunLogWriteFailed = $false
+
 $script:SensitiveNameFragment = @(
     'password', 'passwd', 'pwd', 'passphrase'
     'secret', 'credential', 'token', 'authorization'
@@ -456,10 +461,28 @@ function Add-GitHubAsCodeRunLogLine {
         [System.IO.File]::AppendAllText($Path, $line + [Environment]::NewLine)
     }
     catch {
-        # Verbose, not a warning. A run whose disk filled up would otherwise emit one
-        # warning per line and bury its own output in noise about the transcript -
-        # but swallowing the reason entirely leaves nothing to diagnose it with.
-        Write-Verbose "Could not append to the run transcript '$Path': $($_.Exception.Message)"
+        # Warned ONCE per run, not per line.
+        #
+        # The reasoning for Write-Verbose was half right: a warning per line would bury
+        # the run's real output in noise about the transcript. But Verbose is off by
+        # default, so a transcript that could not be written failed in complete silence
+        # while the report went on naming its path - and troubleshooting.md tells the
+        # reader to look for it there.
+        #
+        # It also defeated a detection one function away. Start-GitHubAsCodeRunLog calls
+        # this inside its own try specifically to find out whether the path is writable,
+        # and this catch swallowed the exception - so the only failure that detection
+        # could ever see was New-Item failing to create the directory.
+        #
+        # Warning once keeps both properties: the reader is told, and the output is not
+        # buried. Same shape as reporting a truncated listing once rather than per page.
+        if (-not $script:RunLogWriteFailed) {
+            $script:RunLogWriteFailed = $true
+            Write-Warning "Could not write the run transcript '$Path': $($_.Exception.Message). The run continues, but the transcript will be incomplete or absent - the report still names this path."
+        }
+        else {
+            Write-Verbose "Could not append to the run transcript '$Path': $($_.Exception.Message)"
+        }
     }
 }
 function Get-GitHubAsCodeProvenance {

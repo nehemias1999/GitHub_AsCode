@@ -467,3 +467,57 @@ Describe 'An environment file the operator named is not optional' {
         ($output -join "`n") | Should -Not -Match 'Environment file not found'
     }
 }
+
+Describe 'inventory reports, plan compares' {
+
+    BeforeAll {
+        $script:EntryPoint = Join-Path (Get-RepositoryRoot) 'automations/repo-inventory/Invoke-RepositoryInventory.ps1'
+        $script:Template = Join-Path (Get-RepositoryRoot) 'automations/repo-inventory/config/repositories.example.json'
+    }
+
+    It 'does not read the declaration during inventory' {
+        # The script description says inventory "makes no reference to the declaration,
+        # so it is the honest starting point", and the README repeated it. Neither was
+        # true: the only command check past the validate section was for 'smoke', so the
+        # comparison ran for inventory too. Against the shipped template that produced
+        # 27 operations, 3 of them blocked because the EXAMPLE-* names do not exist, and
+        # exit 2.
+        #
+        # It broke the rung of the ladder meant to run BEFORE a declaration exists - the
+        # one whose output the declaration is derived from. Somebody generating a
+        # repository from this template ran the documented first command and got a
+        # failure about repositories they had never heard of.
+        #
+        # Asserted from the parse tree rather than by running it, because running needs a
+        # token and the point is structural: no comparison function may be reachable
+        # from the inventory path.
+        $ast = Get-SourceAst -Path $script:EntryPoint
+
+        $comparisons = @($ast.FindAll({
+            $args[0] -is [System.Management.Automation.Language.CommandAst] -and
+            "$($args[0].GetCommandName())" -in 'Get-GitHubRepositoryStatus', 'Get-GitHubUndeclaredStatus'
+        }, $true))
+
+        @($comparisons).Count | Should -BeGreaterThan 0 -Because 'plan still has to compare, so these calls must exist somewhere'
+
+        # Every one of them must sit inside a branch that excludes inventory.
+        foreach ($call in $comparisons) {
+            $enclosing = $call.Extent.StartOffset
+            $guarded = $false
+            foreach ($ifStatement in $ast.FindAll({ $args[0] -is [System.Management.Automation.Language.IfStatementAst] }, $true)) {
+                if ($ifStatement.Extent.StartOffset -gt $enclosing -or $ifStatement.Extent.EndOffset -lt $enclosing) { continue }
+                if ($ifStatement.Extent.Text -match "inventory") { $guarded = $true; break }
+            }
+            $guarded | Should -BeTrue -Because "the call at offset $enclosing must be guarded by a check on the command"
+        }
+    }
+
+    It 'still describes inventory as consulting nothing' {
+        # The documentation and the code now agree. This asserts the direction of that
+        # agreement: if somebody makes inventory compare again, the sentence has to go
+        # too, deliberately.
+        $source = Get-Content -LiteralPath $script:EntryPoint -Raw
+
+        $source | Should -Match 'Consults the declaration for nothing'
+    }
+}

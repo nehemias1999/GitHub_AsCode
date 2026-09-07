@@ -380,7 +380,11 @@ function Invoke-GitHubRequest {
     if ($null -eq $response) { return $null }
 
     return [pscustomobject]@{
-        Content    = ConvertFrom-JsonResponse -Content $response.Content -Uri "GET $Path"
+        # The path, not "GET $Path": ConvertFrom-JsonResponse composes its own
+        # "GET $Uri answered with..." message, so prefixing here produced
+        # "GET GET user/repos answered with HTML" - and dropped the base URL, which is
+        # the one thing the message then tells the reader to go and check.
+        Content    = ConvertFrom-JsonResponse -Content $response.Content -Uri (New-HttpUri -BaseUrl $GitHubContext.BaseUrl -Path $Path -Query $Query)
         Headers    = $response.Headers
         StatusCode = $response.StatusCode
         RateLimit  = Get-GitHubRateLimitState -Headers $response.Headers
