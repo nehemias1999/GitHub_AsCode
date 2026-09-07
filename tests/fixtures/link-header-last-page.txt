@@ -1,0 +1,1 @@
+<https://api.example.com/user/repos?per_page=100&affiliation=owner&page=1>; rel="prev", <https://api.example.com/user/repos?page=1>; rel="first"
