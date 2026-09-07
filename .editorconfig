@@ -1,0 +1,34 @@
+# Layout rules for this repository.
+#
+# PSScriptAnalyzerSettings.psd1 excludes PSUseConsistentIndentation and says layout
+# is governed by this file instead. It said that while this file did not exist, so
+# the exclusion delegated to nothing - which is the "folklore" the same file warns
+# about two comments earlier.
+#
+# It is not only style. tests/automations/SensitiveDataGate.Tests.ps1 extracts a
+# function from scripts/Test-NoSensitiveData.ps1 with the regular expression
+# (?ms)^function Get-GitIgnoredPath \{.*?^\}, so a closing brace that stops being in
+# column 0 breaks it with "Could not extract" rather than with an assertion failure -
+# a failure that names the wrong thing and sends the reader to the wrong file.
+#
+# The ported version of this comment named two suites; the second, PipelineDrift,
+# does not exist in this repository. The constraint is still real, so the citation is
+# corrected rather than removed: a rule with no demonstrable reason is the first one
+# somebody tidies away.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{json,yml,yaml}]
+indent_size = 2
+
+[*.md]
+# Trailing whitespace is a line break in Markdown.
+trim_trailing_whitespace = false

@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "repo-inventory declaration",
+  "description": "What the account's repositories are supposed to look like. Every repository named here is compared against live state; every live repository not named here is reported as undeclared. No secret and no token appears in this file - the project context names the environment variables that hold those.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "classes",
+    "repositories"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "_readme": {
+      "type": "string",
+      "description": "Free text carried by the template. Ignored by the loader."
+    },
+    "classes": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "The classes a repository may belong to. Declared here rather than inferred from the name, because a rule that guesses which class a repository is in will one day guess wrong about the one repository where it matters.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "description"
+        ],
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "repositories": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "class"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]{1,100}$",
+            "description": "The repository name only, never owner/repo: the owner comes from the environment."
+          },
+          "class": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Must be a key of the classes object. Cross-checked by the loader, which JSON Schema cannot express."
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 350,
+            "description": "GitHub truncates beyond 350 characters, so a longer value would never compare equal and the plan would report the same change forever."
+          },
+          "homepage": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "An empty string means 'no homepage'. The API returns an unset homepage as an empty string and an unset description as null, so both are normalized before comparison."
+          },
+          "topics": {
+            "type": "array",
+            "uniqueItems": true,
+            "maxItems": 20,
+            "description": "Topics this repository should carry. They are ADDED to whatever is already live, never substituted for it: PUT /repos/{owner}/{repo}/topics replaces the whole collection, so sending only these would delete every topic added by hand. Removal is reconcile's job, and reconcile does not exist yet.",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9-]{0,49}$"
+            }
+          }
+        }
+      }
+    }
+  }
+}

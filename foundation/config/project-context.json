@@ -1,0 +1,35 @@
+{
+  "$schema": "../schemas/project-context.schema.json",
+
+  "version": "0.1.0",
+
+  "github": {
+    "apiBaseUrlEnv": "GITHUB_API_URL",
+    "graphqlUrlEnv": "GITHUB_GRAPHQL_URL",
+    "ownerEnv": "GITHUB_OWNER",
+    "apiVersion": "2022-11-28",
+
+    "readTokenEnv": "GITHUB_TOKEN_READ",
+    "metadataTokenEnv": "GITHUB_TOKEN_WRITE_METADATA",
+    "contentTokenEnv": "GITHUB_TOKEN_WRITE_CONTENT",
+    "projectsTokenEnv": "GITHUB_TOKEN_PROJECTS"
+  },
+
+  "defaults": {
+    "requestTimeoutSeconds": 60,
+    "maximumRetryCount": 3,
+    "retryAfterCapSeconds": 120,
+    "pageSize": 100,
+    "maximumPageCount": 20,
+    "minimumRateLimitRemaining": 100,
+    "minimumWriteIntervalMilliseconds": 1000,
+    "tokenExpiryWarningDays": 14
+  },
+
+  "automations": {
+    "repo-inventory": {
+      "configuration": "automations/repo-inventory/config/repositories.json",
+      "template": "automations/repo-inventory/config/repositories.example.json"
+    }
+  }
+}
