@@ -81,9 +81,15 @@ Four layers, at different points:
 3. **Every console line passes one funnel.** `Write-ModuleLog` applies
    `Protect-SecretInText` before writing, so a log line added later cannot reintroduce
    a leak. Masking at each call site would depend on remembering.
-4. **The report writer redacts by value.** `Remove-SensitiveValue` walks the object
-   before serialising, so a token that reached a nested property still does not reach
-   the file.
+4. **The report writer redacts twice, by different keys.** `Remove-SensitiveValue`
+   walks the object and redacts by property **name**; `Protect-SecretInText` redacts by
+   **value**, which is what catches a credential sitting under an innocent-looking name
+   or inside free text.
+
+   The earlier wording here credited `Remove-SensitiveValue` with redacting by value. It
+   does not, and the distinction is the whole reason there are two layers: a name-based
+   rule cannot see a token in a URL or in an error message, and a value-based rule cannot
+   know that a field called `credentialsId` is only a reference.
 
 ## The sensitive data gate
 
@@ -93,6 +99,10 @@ Four layers, at different points:
 JWTs, cloud access keys, assigned secrets, and the GitHub token prefixes. Two rules
 cover GitHub: `gh[pousr]_` for the classic shapes, and `github_pat_` for the
 fine-grained one.
+
+`Protect-SecretInText` carries the same two prefixes plus a `Bearer` rule, for the same
+reason from the other direction: the gate stops a credential being committed, and the
+masker stops one being printed.
 
 > The fine-grained rule is new here. The inherited version covered only the five `gh*_`
 > prefixes, so the one credential a reader of *this* repository is most likely to be
