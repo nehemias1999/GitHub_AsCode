@@ -1,0 +1,146 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GitHub_AsCode project context",
+  "description": "Names the environment variables that hold every value the automations need, and the defaults that bound a run. It holds no value that is itself a secret, and no account name: the owner is an environment variable name too, because an account name is identifying data and this file is committed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "github",
+    "defaults",
+    "automations"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Version of this context file's shape, not of the product."
+    },
+    "github": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "apiBaseUrlEnv",
+        "ownerEnv",
+        "apiVersion",
+        "readTokenEnv"
+      ],
+      "description": "Every property here ends in Env and holds the NAME of an environment variable, except apiVersion, which is a public constant.",
+      "properties": {
+        "apiBaseUrlEnv": {
+          "$ref": "#/definitions/environmentVariableName"
+        },
+        "graphqlUrlEnv": {
+          "$ref": "#/definitions/environmentVariableName"
+        },
+        "ownerEnv": {
+          "$ref": "#/definitions/environmentVariableName"
+        },
+        "readTokenEnv": {
+          "$ref": "#/definitions/environmentVariableName"
+        },
+        "metadataTokenEnv": {
+          "$ref": "#/definitions/environmentVariableName"
+        },
+        "contentTokenEnv": {
+          "$ref": "#/definitions/environmentVariableName"
+        },
+        "projectsTokenEnv": {
+          "$ref": "#/definitions/environmentVariableName"
+        },
+        "apiVersion": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "description": "Sent as X-GitHub-Api-Version. Pinned, because the default is whatever GitHub has promoted most recently, and an API version that changes without a commit is drift with no diff."
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requestTimeoutSeconds",
+        "maximumRetryCount",
+        "retryAfterCapSeconds",
+        "pageSize",
+        "maximumPageCount"
+      ],
+      "properties": {
+        "requestTimeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600
+        },
+        "maximumRetryCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "retryAfterCapSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        },
+        "pageSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "REST caps per_page at 100. A larger value is silently clamped by the API, so it is rejected here instead."
+        },
+        "maximumPageCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "description": "Upper bound on pages followed in one collection. Reaching it makes the plan blocked, never silently truncated."
+        },
+        "minimumRateLimitRemaining": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minimumWriteIntervalMilliseconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 60000
+        },
+        "tokenExpiryWarningDays": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 365
+        }
+      }
+    },
+    "automations": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "configuration",
+          "template"
+        ],
+        "properties": {
+          "configuration": {
+            "type": "string",
+            "description": "Repository-relative path of the active configuration. Excluded from version control: it names real repositories."
+          },
+          "template": {
+            "type": "string",
+            "pattern": "\\.example\\.json$",
+            "description": "Repository-relative path of the versioned template. The active file is produced by RENAMING this one, not by copying its contents: the active name is what .gitignore excludes, and a copy invites a new name full of real values that Git happily tracks."
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "environmentVariableName": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*$",
+      "description": "The NAME of an environment variable, never its value."
+    }
+  }
+}
