@@ -23,9 +23,9 @@ Cause, in order of likelihood:
    `foundation/config/project-context.json`. It is reported as blocked rather than
    truncated quietly, precisely so this is visible.
 3. **Something is reading the public endpoint.** `GET /users/{user}/repos` returns
-   public repositories only - on the account where this was first measured it hid a third
-   of the total. There is an absence test asserting no code path builds a `users/` path,
-   so this should be impossible; if it happens, that test has a hole.
+   public repositories only, so it omits every private repository. There is an absence
+   test asserting no code path builds a `users/` path, so this should be impossible; if it
+   happens, that test has a hole.
 
 Cross-check against a different tool:
 

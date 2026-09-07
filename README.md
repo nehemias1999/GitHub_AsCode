@@ -20,17 +20,20 @@ An account accumulates repositories the way a drawer accumulates cables. Each on
 sense on the day it was made; collectively, nothing states how any of them should be
 configured, and nobody can answer *"is my account set up the way I intend?"*
 
-Measured against one real account, to show the shape of the problem:
+What that looks like in practice, on an account nobody has ever declared:
 
-| Fact | Number |
-| --- | --- |
-| Repositories owned | **24** |
-| **Private, and therefore invisible to any unauthenticated view** | **9** |
-| With at least one topic | **0** |
-| With a licence | **2** |
-| With `has_projects` on because nobody turned it off | 24 |
+- **A third of it can be invisible.** Private repositories do not appear in any
+  unauthenticated view, so a tool that reads the wrong endpoint reports a
+  complete-looking list that is missing them.
+- **Nothing is grouped.** With no topics, there is no way to ask "show me the tooling" or
+  "show me what I no longer maintain". The groups exist only in somebody's head.
+- **Defaults were never decided.** Wikis and project boards are on because that is how
+  GitHub creates a repository, not because anyone chose it.
+- **Licences are missing where they matter most**, including on repositories whose whole
+  purpose is to be copied.
 
-Full version: [docs/overview/problem-statement.md](docs/overview/problem-statement.md).
+[docs/overview/problem-statement.md](docs/overview/problem-statement.md) has the `gh`
+commands to measure your own account, so the baseline you work against is yours.
 
 ## Why it is harder than it looks
 
@@ -39,15 +42,15 @@ Each has an implementation that appears to work and destroys something.
 
 | The API behaviour | The obvious implementation | What it destroys |
 | --- | --- | --- |
-| `GET /users/{user}/repos` returns **public repositories only** | Enumerate the account through the endpoint with the user's name in it | Nothing visible - which is the problem. **Measured: it hid a third of the account.** Every private repository vanishes from an inventory that reports itself complete, and a decision gets made from it |
+| `GET /users/{user}/repos` returns **public repositories only** | Enumerate the account through the endpoint with the user's name in it | Nothing visible - which is the problem. Every private repository vanishes from an inventory that reports itself complete, and a decision gets made from it |
 | `PUT /repos/{o}/{r}/topics` replaces the whole collection - no per-topic route | Send the declared topics | Every topic somebody added and nobody wrote down |
 | `enforce_admins` plus one required review, on a single-owner repository | "Let us protect `main` properly" | `main` becomes unmergeable. You cannot approve your own pull request, admin enforcement admits no bypass, and the only way out is the web interface |
 | A GraphQL error arrives as **HTTP 200** with an `errors` array | `if ($status -eq 200) { use $data }` | A `FORBIDDEN` reads as an empty result, so the report states a fabricated fact instead of admitting it could not read |
 
 [docs/reference/github-notes.md](docs/reference/github-notes.md) documents fourteen such
 behaviours, each with the symptom it produces. Two are marked *measured* rather than
-*documented*, because they were observed live against a real account rather than read in
-the documentation.
+*documented*, because they were observed against a live API rather than read in the
+documentation.
 
 ## Approach
 
@@ -250,10 +253,11 @@ This repository is a GitHub **template**. Generate one from it, then follow
 repository classes that match your account, and derive your declaration from your own
 first `inventory` run.
 
-Everything in `docs/` describes the method. The numbers in it come from one real account
-and are there to show that the API traps are real rather than theoretical - your baseline
-will be different, and [problem-statement.md](docs/overview/problem-statement.md) has the
-commands to measure it.
+Everything in `docs/` describes the method rather than any particular account. Nothing
+here reports numbers from somebody else's repositories:
+[problem-statement.md](docs/overview/problem-statement.md) carries the commands to
+measure your own, and `tests/automations/Genericity.Tests.ps1` fails the build if an
+account's data finds its way back in.
 
 ## Notes
 

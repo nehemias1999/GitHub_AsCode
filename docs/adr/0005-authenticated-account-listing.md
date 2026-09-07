@@ -15,17 +15,17 @@ is the one an implementation reaches for.
 
 **It returns public repositories only.**
 
-Measured against one real account:
+The three ways of asking give three different answers:
 
-| Source | Repositories |
+| Source | Returns |
 | --- | --- |
-| Profile `public_repos` | 14 |
-| Public repository search | 15 |
-| **`GET /user/repos`, authenticated** | **24** |
+| Profile `public_repos` | the public count |
+| Public repository search | roughly the public count |
+| **`GET /user/repos`, authenticated** | **everything the account owns** |
 
-Nine private repositories - a third of that account - are invisible to the first
-endpoint. It does not report a partial result, does not warn, and does not differ in
-shape. It returns a complete-looking array.
+Every private repository is invisible to the first endpoint. It does not report a partial
+result, does not warn, and does not differ in shape. It returns a complete-looking
+array.
 
 ## Decision
 

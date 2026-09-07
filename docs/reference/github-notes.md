@@ -20,7 +20,7 @@ against a live account rather than read in the documentation.
 | --- | --- |
 | **The API** | `GET /users/{user}/repos` returns **public repositories only**. The private ones exist solely behind `GET /user/repos` with an authenticated token. |
 | **The obvious implementation** | Enumerate the account through the endpoint that has the user's name in it. |
-| **What it destroys** | Nothing - it destroys *trust*, which is worse here. **Measured: the public endpoint hid a third of the account.** Every private repository vanishes from an inventory that reports itself complete, and a decision gets made from it. |
+| **What it destroys** | Nothing - it destroys *trust*, which is worse here. Every private repository vanishes from an inventory that reports itself complete, and a decision gets made from it. |
 | **Mitigation** | `Get-GitHubOwnedRepository` uses `/user/repos` with `affiliation=owner`. An absence test asserts no string literal anywhere in the repository begins `users/`. See [ADR 0005](../adr/0005-authenticated-account-listing.md). |
 
 ### 2. Topics are a replace-the-whole-collection API
