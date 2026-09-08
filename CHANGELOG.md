@@ -10,6 +10,30 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **ADR 0006 - Python, and nothing but its standard library.** Records the decision to
+  rewrite this tool in Python so it runs on Linux CI agents, in containers and on a Linux
+  workstation, and restates the "no dependency beyond the interpreter and git" rule in the
+  new language. It also records what was weighed against it: PowerShell 7 is
+  cross-platform and this codebase is close to portable already, so the alternative was
+  about half a day of work against a 7,911-line rewrite. Nothing is decided here about
+  what the tool is *allowed to do* - ADRs 0001 through 0005 stand.
+- **ADR 0007 - One schema validator, built in.** The reduced validator exists only
+  because Windows PowerShell 5.1 has no `Test-Json -Schema`; Python removes the
+  constraint, so the capability probe and the two engines go away rather than being
+  reproduced. The validator gains the keywords it currently ignores - `pattern`,
+  the length, range and item bounds - and gains a guard that fails the gate if a schema
+  ever uses a keyword outside the implemented set. Today that gap is silent: adding
+  `oneOf` to a schema would stop it being checked with no symptom.
+
+### Changed
+
+- `docs/adr/0004-fine-grained-tokens-only.md` carries a status note saying which of its
+  supporting arguments ADR 0006 supersedes. The body is untouched: an ADR records what was
+  decided and why at the time, and editing it would erase the reasoning rather than update
+  it. The decision itself is unchanged.
+
 ## [0.1.0] - 2026-09-07
 
 First release. Phase 1: the read-only account inventory.
