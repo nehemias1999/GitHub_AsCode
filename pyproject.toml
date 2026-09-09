@@ -44,7 +44,7 @@ dev = ["ruff>=0.6.0,<1.0.0", "jsonschema>=4.0.0,<5.0.0"]
 # because a loss recorded only in a config value is a loss nobody reads.
 target-version = "py311"
 line-length = 100
-src = ["src", "tests/python", "scripts"]
+src = ["src", "tests/python", "scripts", "automations"]
 
 [tool.ruff.lint]
 # No rule is excluded, for the reason PSScriptAnalyzerSettings.psd1 gives at length:
@@ -76,4 +76,7 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM"]
 "github_as_code.plan" = 1
 "github_as_code.configuration" = 2
 "github_as_code.repository" = 2
+"github_as_code.rest" = 3
 "github_as_code.report" = 3
+"github_as_code.automations" = 4
+"github_as_code.automations.repo_inventory" = 5

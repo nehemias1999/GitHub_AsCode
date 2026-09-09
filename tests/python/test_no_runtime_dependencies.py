@@ -87,15 +87,33 @@ class ItRunsWithNoSitePackagesAtAll(unittest.TestCase):
         # environment. Naming it there is the point: the path is one directory of this
         # repository and nothing else.
         #
-        # It imports the package today. When the CLI lands it imports and runs
-        # `validate`, which is the end-to-end form ADR 0006 describes - an import
-        # proves less than a command, and the difference is worth not overstating.
+        # It RUNS `validate`, not just an import. An import proves the module graph
+        # loads; a command proves the code paths a run actually takes do, which is the
+        # end-to-end form ADR 0006 describes. validate is the one rung that needs no
+        # network and no token, so it is the one that can run here.
+        #
+        # Upgrading this from an import to a command immediately found a real defect:
+        # main() took repository_root as given, so a string - which this test builds out
+        # of sys.argv - reached `root / "foundation"` and failed with a TypeError about
+        # str and str. The weaker version of this guard passed over it.
         program = (
             "import sys; sys.path.insert(0, sys.argv[1]); "
-            "import github_as_code; print(github_as_code.__version__)"
+            "from github_as_code.automations import repo_inventory; "
+            "sys.exit(repo_inventory.main("
+            "['validate', '--configuration-path', sys.argv[2]], repository_root=sys.argv[3]))"
         )
+        template = REPO_ROOT / "automations/repo-inventory/config/repositories.example.json"
         completed = subprocess.run(
-            [sys.executable, "-I", "-S", "-c", program, str(SRC_ROOT)],
+            [
+                sys.executable,
+                "-I",
+                "-S",
+                "-c",
+                program,
+                str(SRC_ROOT),
+                str(template),
+                str(REPO_ROOT),
+            ],
             capture_output=True,
             text=True,
             check=False,
@@ -104,10 +122,11 @@ class ItRunsWithNoSitePackagesAtAll(unittest.TestCase):
         self.assertEqual(
             0,
             completed.returncode,
-            "The package does not import without site-packages, which means something "
-            f"in it needs an installed dependency.\nstderr:\n{completed.stderr}",
+            "validate does not run without site-packages, which means something in it "
+            f"needs an installed dependency.\nstdout:\n{completed.stdout}"
+            f"\nstderr:\n{completed.stderr}",
         )
-        self.assertTrue(completed.stdout.strip(), "The isolated interpreter printed nothing.")
+        self.assertIn("offline and complete", completed.stdout)
 
 
 if __name__ == "__main__":

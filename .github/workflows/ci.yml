@@ -179,3 +179,14 @@ jobs:
       - name: Run the quality gate
         # One command, the same one a person runs locally.
         run: python scripts/run_tests.py
+
+      - name: Prove the automation still validates offline
+        # The Python half of the step the PowerShell job has run since phase 1. validate
+        # needs no network and no credential, so it is the one end-to-end path that can
+        # run here - and it is what proves the shipped template parses and satisfies its
+        # schema under this interpreter, on this platform.
+        #
+        # There is deliberately no step that contacts the API, for the reason the
+        # PowerShell job gives: a token in CI would be a credential with account-wide
+        # read access sitting in an environment that runs code from pull requests.
+        run: python automations/repo-inventory/inventory.py validate --configuration-path automations/repo-inventory/config/repositories.example.json
