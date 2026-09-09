@@ -521,3 +521,41 @@ Describe 'inventory reports, plan compares' {
         $source | Should -Match 'Consults the declaration for nothing'
     }
 }
+
+Describe 'An automation emits only what it means to emit' {
+
+    BeforeAll {
+        $script:EntryPoint = Join-Path (Get-RepositoryRoot) 'automations/repo-inventory/Invoke-RepositoryInventory.ps1'
+    }
+
+    It 'discards the names Import-GitHubAsCodeEnvironment returns' {
+        # That function returns the variable names it set - deliberately, so a caller can
+        # log or assert them. An uncaptured return value in PowerShell is not discarded,
+        # it is written to the output stream, so every authenticated run ended by printing
+        # seven variable names after its report paths as if they were part of the result.
+        #
+        # Names, never values, so nothing leaked. But an entry point whose output is
+        # consumed by a person or a pipe should emit only what it chose to.
+        #
+        # Asserted from the parse tree: the call must be assigned away or piped to
+        # Out-Null, and a future caller that forgets fails here rather than in somebody's
+        # terminal.
+        $ast = Get-SourceAst -Path $script:EntryPoint
+
+        $calls = @($ast.FindAll({
+            $args[0] -is [System.Management.Automation.Language.CommandAst] -and
+            "$($args[0].GetCommandName())" -eq 'Import-GitHubAsCodeEnvironment'
+        }, $true))
+
+        @($calls).Count | Should -BeGreaterThan 0 -Because 'the entry point still has to load .env'
+
+        foreach ($call in $calls) {
+            $pipeline = $call.Parent
+            $swallowed =
+                ($pipeline.Parent -is [System.Management.Automation.Language.AssignmentStatementAst]) -or
+                ($pipeline.Extent.Text -match 'Out-Null')
+
+            $swallowed | Should -BeTrue -Because 'its return value is variable names, not part of the report'
+        }
+    }
+}
