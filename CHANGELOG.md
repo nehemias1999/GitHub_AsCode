@@ -12,6 +12,20 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`src/github_as_code/repository.py`** - the domain rules, as pure functions. The topic
+  union that stops `PUT /topics` destroying what nobody declared, the topic and name
+  validators, the snapshot reducer, and the four-case comparison whose most important
+  case is that a declared repository the API did not return is `resolve`/`blocked` and
+  never `create`.
+- **`src/github_as_code/plan.py`** - the closed vocabularies, the plan model and the
+  summary. `format_plan_summary` returns lines rather than writing to a stream, which is
+  the one real change from the PowerShell version: a pure function is testable without
+  capturing output.
+- **`src/github_as_code/report.py`** - the evidence writer, with both masking layers.
+  The `authentication` field name is now pinned by a test in both directions: it must
+  survive the walk, and `token`, `tokenShape`, `credentialShape`, `auth` and
+  `authorization` must still be redacted. The guard has not been loosened; the field was
+  renamed, which is what happened the first time too.
 - **`src/github_as_code/schema.py` - one JSON Schema validator, built in.** ADR 0007
   executed: the capability probe and the two engines are gone, the engine is `builtin` and
   a test asserts the name never varies. It gains every keyword the reduced validator
