@@ -9,7 +9,17 @@ it is.
 
 ## The layers
 
-Dependencies point downward, never sideways.
+Dependencies point downward, never sideways. In the PowerShell implementation that is a
+convention nothing checks. In the Python one it is a guard: imports are statically
+enumerable, so `tests/python/test_layering.py` reads a ladder from `pyproject.toml` and
+fails the gate on an import that points sideways or up.
+
+The ladder is finer-grained than the bands below, because the bands are coarser than the
+truth. `GitHubAsCode.Report` requires `GitHubAsCode.Plan` and
+`GitHubAsCode.Configuration`, and all three sit in the cross-cutting band, so the band
+grouping alone would read those edges as sideways. The edges are drawn now - they were
+missing from this diagram while the manifests declared them, which is the kind of gap a
+diagram keeps quietly.
 
 ```mermaid
 flowchart TD
@@ -43,8 +53,12 @@ flowchart TD
     RI --> RP
     RI --> CF
     REPO --> REST
+    REPO --> PL
     CONT --> REST
     PROJ --> GQL
+    RP --> PL
+    RP --> CF
+    REST --> CF
     REST --> HTTP
     GQL --> HTTP
 ```

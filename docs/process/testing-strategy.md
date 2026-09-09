@@ -2,10 +2,27 @@
 
 **Purpose.** Say what is tested, how, and what each guard is protecting against.
 
-**Scope.** `tests/`, and `scripts/Invoke-Tests.ps1`.
+**Scope.** `tests/`, `scripts/Invoke-Tests.ps1`, and `scripts/run_tests.py`.
 
 **Audience.** Anyone adding a test, and anyone wondering why the suite refuses
 something.
+
+## Two gates, for as long as there are two implementations
+
+`scripts/Invoke-Tests.ps1` is the PowerShell gate. `scripts/run_tests.py` is the Python
+one. Both run in CI on every pull request, and every pull request leaves both green.
+
+This is a cost, and it is temporary and bounded rather than a maintenance model. ADR
+0006 keeps the PowerShell implementation alive because it is the only oracle for
+"does the port produce the same answers?", and states the trigger for deleting it. The
+PowerShell gate cannot serve both halves: it needs PowerShell, and requiring PowerShell
+on a Linux agent to test a tool whose whole point is running there without it would be
+an odd thing to write down. When the PowerShell goes, `Invoke-Tests.ps1` goes with it
+and one gate is left.
+
+The Python gate does **not** run the sensitive data scan, and says so on every run
+rather than leaving it to be noticed. `scripts/Test-NoSensitiveData.ps1` is not ported
+yet, so a green Python run is a narrower claim than a green PowerShell one.
 
 ## One definition of "passes"
 
@@ -92,6 +109,46 @@ declaration produces no change.
 **4. End to end, offline, in CI.** The gate, then each automation's `validate` against
 its own template, on both `powershell` and `pwsh`, with no network and no credential.
 
+## What the Python gate checks, and what it cannot
+
+`scripts/run_tests.py`. Parse, ruff, `unittest`. Same shape and same reasoning as the
+PowerShell runner: increasing order of cost, every failure adds a line rather than
+stopping the run, a missing linter is a **failure** and not a skip, and an empty test
+discovery is a failure too - green from a run that tested nothing looks exactly like
+green from a run that tested something.
+
+`unittest` rather than a third-party runner is a choice, not an oversight: it is in the
+standard library, so the Python gate needs exactly one development dependency instead
+of two. ADR 0006 permits either.
+
+### Three guards for one rule: no dependencies
+
+In PowerShell "no dependencies" held because no package manager was in play. Python has
+pip, so the rule needs teeth. Three layers, because they fail differently:
+
+| Guard | Catches |
+| --- | --- |
+| `pyproject.toml` declares `dependencies = []` | A dependency declared and not yet imported - the state a repository is in for as long as it takes somebody to write the import |
+| Every import under `src/` is stdlib or this package, read from the parse tree | One imported and never declared, which is what happens when the package is already installed on the machine that added it |
+| The package imports under `python -I -S` | Both, by refusing to run with `site-packages` at all |
+
+Each of them fails when it finds nothing to read, rather than passing over an empty
+tree.
+
+### Dependencies point downward, and now something checks
+
+`docs/reference/architecture.md` has said this since phase 1 and nothing enforced it.
+Python imports are statically enumerable, so `tests/python/test_layering.py` reads the
+ladder from `pyproject.toml` under `[tool.github-as-code.layers]` and fails on an import
+that points sideways or up. A module with no layer fails too: that is what keeps the
+guard from growing quieter with every commit while the port is still mostly empty.
+
+The reader those guards are built on has its own tests, because a reader that misses a
+spelling makes both of them report a clean tree they never read. That is measured, not
+theoretical: the first version missed `from package import module` - the ordinary way
+somebody writes exactly the import the layer guard exists to catch - and a planted pair
+of modules at the same layer went through in silence.
+
 ## The support floor is only half-testable locally
 
 `PSUseCompatibleSyntax` is configured for 5.1 and 7.0, and warnings fail the gate, so
@@ -105,6 +162,15 @@ tests 7 rather than shelling out to 5.1 and reporting a pass for both.
 
 If you work on this repository, check which engines your machine actually has before
 concluding that a green local run covers the declared support floor.
+
+**On the Python side this is worse, and the loss is deliberate rather than unnoticed.**
+`PSUseCompatibleSyntax` checked the 5.1/7.0 floor statically, on every machine that ran
+the gate. Python has no equivalent. `ruff`'s `target-version = "py311"` catches the
+subset that is syntax - a 3.12 generic is flagged, a 3.12 standard-library function is
+not - and the rest is enforced only by the CI matrix running 3.11 and 3.14 on Linux and
+Windows. A local run on one interpreter proves nothing about the floor. ADR 0006 records
+this as a real downgrade rather than an even trade, which is why it is written here too:
+a loss recorded only in a config value is a loss nobody reads.
 
 ## Documentation is tested
 

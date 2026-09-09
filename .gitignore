@@ -19,6 +19,15 @@ automations/*/config/metadata.json
 automations/*/config/protection.json
 automations/*/config/board.json
 
+# Python build and tool caches. Nothing here is ever committed: the package is not
+# installed, it is read from src/ in the working copy, so a stale .pyc is a way for a
+# test to pass against code that is no longer there.
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.venv/
+venv/
+
 # Misc
 *.log
 *.tmp

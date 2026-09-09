@@ -1,0 +1,73 @@
+# The manifest for the Python half of the port.
+#
+# Nothing here is built or installed. There is no [build-system] on purpose: a build
+# backend is a dependency, and this file is the place that declares there are none.
+# The package is run from src/ placed on sys.path, which is also what lets the
+# execution guard import it under `python -I -S` with no site-packages at all.
+#
+# Read by tomllib, which is the concrete reason ADR 0006 puts the floor at 3.11: the
+# guard that proves there are no dependencies would otherwise need a dependency, or a
+# regular expression, to read this file.
+
+[project]
+name = "github-as-code"
+version = "0.1.0"
+description = "Declarative, read-only inventory of a GitHub account."
+requires-python = ">=3.11"
+
+# The rule ADR 0004 states and ADR 0006 restates in this language: nothing beyond the
+# standard library and git. The empty list is not a placeholder waiting to be filled -
+# tests/python/test_no_runtime_dependencies.py reads it here and fails the gate if it
+# ever gains an entry, including one nobody has imported yet.
+dependencies = []
+
+[project.optional-dependencies]
+# Development only, and the shipped tool imports neither - exactly the standing that
+# Pester and PSScriptAnalyzer have on the PowerShell side. The runtime guard asserts
+# these never appear in `dependencies`.
+#
+# The upper bound is deliberate, and it is the same reasoning .github/workflows/ci.yml
+# writes out for PSScriptAnalyzer: this repository excludes no lint rule, so any rule a
+# new release adds fires immediately and fails the gate on code that did not change -
+# a build that breaks on a day nobody committed. ruff is pre-1.0, so its minor releases
+# are where rules arrive; the bound is revisited when 1.0 ships rather than widened
+# quietly. scripts/run_tests.py prints the version it actually ran, so the gate says
+# what it used instead of leaving it to be inferred.
+dev = ["ruff>=0.6.0,<1.0.0"]
+
+[tool.ruff]
+# The one static remnant of a support floor. PSUseCompatibleSyntax checked the 5.1/7.0
+# floor on every machine that ran the gate; Python has no equivalent, and ADR 0006
+# records that as a real downgrade rather than an even trade. target-version catches
+# the subset that is syntax - a `match` statement is fine, a 3.12 generic is not - and
+# the CI matrix carries the rest. docs/process/testing-strategy.md says so in prose,
+# because a loss recorded only in a config value is a loss nobody reads.
+target-version = "py311"
+line-length = 100
+src = ["src", "tests/python", "scripts"]
+
+[tool.ruff.lint]
+# No rule is excluded, for the reason PSScriptAnalyzerSettings.psd1 gives at length:
+# an exclusion carrying somebody else's reason is worse than no exclusion, because it
+# looks answered. Adding one needs evidence measured here - the finding count, the
+# shapes flagged, and why changing the code would be worse.
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+
+# --- The layer map ---------------------------------------------------------
+#
+# docs/reference/architecture.md says "dependencies point downward, never sideways".
+# PowerShell had no way to check that, so it was a convention. Python imports are
+# statically enumerable, so it becomes a guard: tests/python/test_layering.py reads
+# this table and fails when a module imports one at its own layer or above.
+#
+# The numbers come from the RequiredModules graph the PowerShell manifests actually
+# declare, not from the bands in the diagram. The bands are coarser than the truth:
+# GitHubAsCode.Report requires GitHubAsCode.Plan and GitHubAsCode.Configuration, and
+# all three sit in one band, so the diagram's own grouping would read those edges as
+# sideways. The ladder below is what the code does.
+#
+# A module absent from this table fails the guard rather than being waved through.
+# That is what gives the guard teeth while the port is still mostly empty: the next
+# module to land cannot land unplaced.
+[tool.github-as-code.layers]
+"github_as_code" = 0
