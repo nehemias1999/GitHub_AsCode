@@ -29,6 +29,8 @@ Each ADR records a decision that would be expensive to reverse, and the reason.
 | [0003](adr/0003-additive-by-default.md) | Additive by default: nothing is ever deleted |
 | [0004](adr/0004-fine-grained-tokens-only.md) | Fine-grained tokens, because they cannot delete |
 | [0005](adr/0005-authenticated-account-listing.md) | The account listing endpoint |
+| [0006](adr/0006-python-and-the-standard-library.md) | Python, and nothing but its standard library |
+| [0007](adr/0007-one-schema-validator.md) | One schema validator, built in and guarded for coverage |
 
 Every document here is linked from this page, and the test suite fails if one is not:
 a document nobody can reach from the index is one nobody reads, and it drifts from the

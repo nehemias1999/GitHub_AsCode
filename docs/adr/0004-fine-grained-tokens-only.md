@@ -1,6 +1,14 @@
 # 0004 - Fine-grained tokens, because they cannot delete
 
-**Status.** Accepted, phase 1.
+**Status.** Accepted, phase 1. The decision stands unchanged; one supporting argument is
+superseded in part by [ADR 0006](0006-python-and-the-standard-library.md), which changes
+the implementation language. The body below is left exactly as written - an ADR is a
+record of what was decided and why, at the time, and editing it would erase the reasoning
+rather than update it. What changed: the cost of a GitHub App is no longer RS256 through
+hand-parsed ASN.1, but the rule it was weighed against - no dependency beyond the
+interpreter and git - is the same rule, restated for Python. Fine-grained tokens remain
+the decision, for the reason that decided it: there is no fine-grained permission
+equivalent to deleting a repository.
 
 ## Context
 
