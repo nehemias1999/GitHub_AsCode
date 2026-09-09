@@ -302,6 +302,43 @@ function Write-Utf8NoBom {
     [System.IO.File]::WriteAllText($fullPath, $Content, $encoding)
 }
 
+function Format-ReportTimestamp {
+    <#
+    .SYNOPSIS
+        Renders a UTC instant the one way a report writes one.
+
+    .DESCRIPTION
+        Pure function. Two callers were formatting timestamps with .ToString('o'),
+        which is .NET's round-trip shape and carries seven fractional digits:
+        2027-09-07T03:00:00.0000000Z. Python's isoformat() writes the same instant as
+        2027-09-07T03:00:00+00:00. Both are ISO 8601 and neither is wrong, which is
+        exactly why the shape has to be chosen rather than inherited from whichever
+        library each side happens to use - a report field that differs in spelling
+        cannot be compared between the two implementations.
+
+        Seconds, a literal Z, invariant culture. No fractional part: nothing in a
+        report is measured finely enough for it to mean anything, and a field whose
+        precision exceeds its accuracy invites a reader to trust it.
+
+    .PARAMETER Value
+        The instant. Converted to UTC first, so a caller holding local time cannot
+        write a local timestamp under a name that says Utc.
+
+    .EXAMPLE
+        Format-ReportTimestamp -Value ([datetime]::UtcNow)
+
+    .OUTPUTS
+        The timestamp, as text.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)] [datetime] $Value
+    )
+
+    return $Value.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture)
+}
+
 function Get-GitHubAsCodeReportPath {
     <#
     .SYNOPSIS
@@ -814,6 +851,7 @@ function Format-GitHubAsCodeReportMarkdown {
 }
 
 Export-ModuleMember -Function @(
+    'Format-ReportTimestamp',
     'Protect-SecretInText',
     'Remove-SensitiveValue',
     'Get-GitHubAsCodeReportPath',

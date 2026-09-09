@@ -177,6 +177,25 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Report list order no longer depends on the machine's locale.** `Sort-Object` compares
+  by the current culture and ignores case, so the same account produced a different report
+  order on a machine with a different locale - the same class of defect as reading an
+  HTTP-date under the current culture, which this repository had already fixed once. Both
+  implementations now sort ordinally, through `Get-OrdinalSortedString` on the PowerShell
+  side. Found by comparing two live runs, not by reading the code: 81 of 99 report
+  differences were ordering.
+- **One timestamp shape in both implementations.** `.ToString('o')` writes seven
+  fractional digits and `isoformat()` writes a `+00:00` offset; both are ISO 8601 and
+  neither is wrong, which is why the shape had to be chosen rather than inherited.
+  `Format-ReportTimestamp` and `format_timestamp` write seconds and a literal `Z`.
+- `scripts/compare_reports.py` normalises `detail.rateLimit.remaining` and
+  `detail.rateLimit.resetUtc`, which are per-run observations. `limit` and `resource`
+  stay compared: they describe the budget rather than the run.
+- The `listing.rationale` field is worded the same way in both implementations. The Python
+  one cannot name the endpoint - the `users/` guard forbids it - so the PowerShell one
+  adopted the wording that both can write, rather than the difference being normalised
+  away.
+
 - `Invoke-RepositoryInventory.ps1` no longer prints the seven environment variable names
   that `Import-GitHubAsCodeEnvironment` returns. The function returns them by design; the
   call site did not capture the result, and in PowerShell an uncaptured return value is

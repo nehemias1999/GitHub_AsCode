@@ -11,6 +11,7 @@
     RequiredModules   = @('GitHubAsCode.Plan', 'GitHubAsCode.Configuration')
 
     FunctionsToExport = @(
+        'Format-ReportTimestamp',
         'Protect-SecretInText',
         'Remove-SensitiveValue',
         'Get-GitHubAsCodeReportPath',

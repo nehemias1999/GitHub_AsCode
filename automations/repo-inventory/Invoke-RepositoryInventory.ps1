@@ -376,7 +376,7 @@ if ($listing.Truncated) {
 # So inventory now records presence and says what it found, consulting nothing. The
 # snapshot every declaration is derived from is in the report either way.
 if ($Command -eq 'inventory') {
-    foreach ($name in @($snapshotByName.Keys | Sort-Object)) {
+    foreach ($name in @(Get-OrdinalSortedString -Value @($snapshotByName.Keys))) {
         $snapshot = $snapshotByName[$name]
 
         $note = @()
@@ -411,7 +411,7 @@ else {
 # answer with a verdict about twenty-three others.
 if ($Command -ne 'inventory' -and $RepositoryName.Count -eq 0) {
     $declaredNameSet = @($declaration.repositories | ForEach-Object { $_.name })
-    foreach ($name in @($snapshotByName.Keys | Sort-Object)) {
+    foreach ($name in @(Get-OrdinalSortedString -Value @($snapshotByName.Keys))) {
         if ($declaredNameSet -contains $name) { continue }
         $status = Get-GitHubUndeclaredStatus -Snapshot $snapshotByName[$name]
         Add-PlanOperation -Plan $plan -Resource 'repository' -Name $name -Status $status | Out-Null
@@ -450,7 +450,7 @@ $detail = [ordered]@{
 
     listing         = [ordered]@{
         endpoint  = 'GET /user/repos?affiliation=owner'
-        rationale = 'Not GET /users/{owner}/repos, which returns public repositories only.'
+        rationale = 'Not the endpoint with the account name in the path, which returns public repositories only.'
         total        = $liveRepository.Count
         # publicCount / privateCount, not public / private. The absence guard in
         # tests/automations/Automations.Tests.ps1 forbids a hashtable key named
@@ -496,7 +496,7 @@ $detail = [ordered]@{
         [ordered]@{
             isClassic       = [bool] $tokenShape.IsClassic
             scope           = @($tokenShape.Scope)
-            expiresUtc      = if ($tokenShape.ExpiresUtc) { $tokenShape.ExpiresUtc.ToString('o') } else { '' }
+            expiresUtc      = if ($tokenShape.ExpiresUtc) { Format-ReportTimestamp -Value $tokenShape.ExpiresUtc } else { '' }
             daysUntilExpiry = $tokenShape.DaysUntilExpiry
         }
     }
@@ -506,7 +506,7 @@ $detail = [ordered]@{
         [ordered]@{
             limit     = $listing.RateLimit.Limit
             remaining = $listing.RateLimit.Remaining
-            resetUtc  = if ($listing.RateLimit.ResetUtc) { $listing.RateLimit.ResetUtc.ToString('o') } else { '' }
+            resetUtc  = if ($listing.RateLimit.ResetUtc) { Format-ReportTimestamp -Value $listing.RateLimit.ResetUtc } else { '' }
             resource  = $listing.RateLimit.Resource
         }
     }
@@ -515,8 +515,8 @@ $detail = [ordered]@{
     # The account-level summary. These four numbers are the reason to run this at
     # all: they are what a decision about the older repositories gets made from.
     finding         = [ordered]@{
-        withoutLicense   = @($withoutLicense | ForEach-Object { $_.name } | Sort-Object)
-        withoutTopics    = @($withoutTopics | ForEach-Object { $_.name } | Sort-Object)
+        withoutLicense   = @(Get-OrdinalSortedString -Value @($withoutLicense | ForEach-Object { $_.name }))
+        withoutTopics    = @(Get-OrdinalSortedString -Value @($withoutTopics | ForEach-Object { $_.name }))
         wikiEnabled      = $wikiEnabled.Count
         projectsEnabled  = $projectsEnabled.Count
         undeclaredCount  = @($snapshotByName.Keys | Where-Object { $declaredNames -notcontains $_ }).Count
@@ -524,7 +524,7 @@ $detail = [ordered]@{
 
     # The snapshot the declaration is derived from. Everything needed to write
     # repositories.json is here, so nobody has to click through the web interface.
-    repository      = @($snapshotByName.Keys | Sort-Object | ForEach-Object { $snapshotByName[$_] })
+    repository      = @(Get-OrdinalSortedString -Value @($snapshotByName.Keys) | ForEach-Object { $snapshotByName[$_] })
 }
 
 $written = Write-GitHubAsCodeReport -Plan $plan -Path $reportPathResolved -Module $moduleName -Detail ([pscustomobject] $detail)

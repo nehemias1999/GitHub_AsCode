@@ -243,5 +243,32 @@ class EveryVerdictIsInTheClosedVocabulary(unittest.TestCase):
             repository.Status(action="destroy", status="ok", reason="", difference=[])
 
 
+class ListOrderDoesNotDependOnTheMachine(unittest.TestCase):
+    """Measured against a live account: 81 of 99 report differences were list ORDER.
+
+    PowerShell's Sort-Object compares case-insensitively and by current culture, so it
+    ordered 'therapist...' before 'TUP_...'. Python's sorted() is ordinal and does not.
+    The PowerShell side was changed to ordinal - it was the one whose output varied by
+    machine locale - and these cases pin the ordering both now produce.
+    """
+
+    def test_a_topic_is_lowercased_first_so_case_never_arises_there(self):
+        # Worth stating, because it is why the topic payload was NOT among the 81
+        # differing fields: the API stores topics lowercase, so format_topic_name
+        # lowercases them and there is no case left to order by. The names that DID
+        # differ - repository names - are case-sensitive on the way in and preserved.
+        union = repository.topic_union(["therapist"], ["TUP"])
+        self.assertEqual(["therapist", "tup"], union.payload)
+
+    def test_orders_a_snapshot_topic_list_ordinally(self):
+        snapshot = repository.new_snapshot({"name": "x", "topics": ["therapist", "TUP"]})
+        self.assertEqual(["TUP", "therapist"], snapshot["topics"])
+
+    def test_is_stable_so_the_same_input_twice_produces_the_same_order(self):
+        first = repository.topic_union(["b", "A"], ["c"]).payload
+        second = repository.topic_union(["b", "A"], ["c"]).payload
+        self.assertEqual(first, second)
+
+
 if __name__ == "__main__":
     unittest.main()

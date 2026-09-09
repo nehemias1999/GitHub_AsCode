@@ -233,9 +233,13 @@ function Get-GitHubTopicUnion {
         if ($topic) { $declared += Format-GitHubTopicName -Topic $topic }
     }
 
-    $union = @($live + $declared | Sort-Object -Unique)
-    $added = @($declared | Where-Object { $live -notcontains $_ } | Sort-Object -Unique)
-    $preserved = @($live | Where-Object { $declared -notcontains $_ } | Sort-Object -Unique)
+    # Ordinal, not Sort-Object. Sort-Object orders by the current culture, so the same
+    # declaration produces a different payload on two machines with different locales -
+    # and the payload is what drift is defined against, so an order that varies by
+    # machine makes drift vary by machine too.
+    $union = @(Get-OrdinalSortedString -Value ($live + $declared) -Unique)
+    $added = @(Get-OrdinalSortedString -Value @($declared | Where-Object { $live -notcontains $_ }) -Unique)
+    $preserved = @(Get-OrdinalSortedString -Value @($live | Where-Object { $declared -notcontains $_ }) -Unique)
 
     return [pscustomobject]@{
         Payload   = $union
@@ -294,7 +298,7 @@ function New-GitHubRepositorySnapshot {
     foreach ($item in @($snapshot['topics'])) {
         if ($item) { $topic += [string] $item }
     }
-    $snapshot['topics'] = @($topic | Sort-Object)
+    $snapshot['topics'] = @(Get-OrdinalSortedString -Value $topic)
 
     # The licence arrives as an object, and the only part worth reporting is the
     # identifier. A repository with no licence has $null here, not an empty object,

@@ -5,6 +5,7 @@ redaction went wrong in a way that was worse than a leak: it destroyed the evide
 report was written to carry. Both are pinned.
 """
 
+import datetime
 import json
 import unittest
 from pathlib import Path
@@ -319,6 +320,34 @@ class ARunTranscriptNeverTakesTheRunDown(unittest.TestCase):
 
     def test_ignores_an_absent_transcript_so_a_run_without_one_keeps_working(self):
         report.add_run_log_line(None, "info", "anything")
+
+
+class TheReportTimestampIsOneShape(unittest.TestCase):
+    """The other half of the parity fix, and the reason it exists.
+
+    `.ToString('o')` writes seven fractional digits; `isoformat()` writes a +00:00
+    offset. Both are ISO 8601 and neither is wrong, which is exactly why the shape has
+    to be chosen rather than inherited from whichever library each side reaches for.
+    """
+
+    def test_writes_the_one_shape_both_implementations_write(self):
+        when = datetime.datetime(2027, 9, 7, 3, 0, 0, tzinfo=datetime.UTC)
+        self.assertEqual("2027-09-07T03:00:00Z", report.format_timestamp(when))
+
+    def test_carries_no_fractional_part(self):
+        when = datetime.datetime(2027, 9, 7, 3, 0, 0, 123456, tzinfo=datetime.UTC)
+        self.assertNotIn(".", report.format_timestamp(when))
+
+    def test_converts_to_utc_so_a_local_value_cannot_be_written_as_utc(self):
+        offset = datetime.timezone(datetime.timedelta(hours=-3))
+        when = datetime.datetime(2027, 9, 7, 0, 0, 0, tzinfo=offset)
+        self.assertEqual("2027-09-07T03:00:00Z", report.format_timestamp(when))
+
+    def test_treats_a_naive_value_as_utc_rather_than_as_local_time(self):
+        # A naive datetime read as local time would shift the instant by the machine's
+        # offset, which is the same class of machine-dependence the ordinal sort fixed.
+        when = datetime.datetime(2027, 9, 7, 3, 0, 0)
+        self.assertEqual("2027-09-07T03:00:00Z", report.format_timestamp(when))
 
 
 if __name__ == "__main__":

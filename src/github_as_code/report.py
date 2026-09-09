@@ -117,6 +117,36 @@ class ReportPaths:
     markdown_path: Path
 
 
+def format_timestamp(value: datetime.datetime) -> str:
+    """Render a UTC instant the one way a report writes one.
+
+    Two implementations were formatting timestamps with whatever their standard
+    library reaches for: .NET's round-trip shape carries seven fractional digits
+    (2027-09-07T03:00:00.0000000Z), and `isoformat()` writes the same instant as
+    2027-09-07T03:00:00+00:00. Both are ISO 8601 and neither is wrong, which is
+    exactly why the shape has to be chosen rather than inherited - a report field
+    that differs in spelling cannot be compared between the two.
+
+    Seconds, a literal Z, and no fractional part: nothing in a report is measured
+    finely enough for one to mean anything, and a field whose precision exceeds its
+    accuracy invites a reader to trust it.
+
+    Args:
+        value: The instant. Converted to UTC first, so a caller holding local time
+            cannot write a local timestamp under a name that says Utc.
+
+    Returns:
+        The timestamp, as text.
+
+    Example:
+        >>> format_timestamp(datetime.datetime(2027, 9, 7, 3, tzinfo=datetime.UTC))
+        '2027-09-07T03:00:00Z'
+    """
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=datetime.UTC)
+    return value.astimezone(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def protect_secrets_in_text(text: str | None) -> str | None:
     """Return text with credential-shaped values masked.
 

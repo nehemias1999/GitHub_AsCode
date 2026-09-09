@@ -192,5 +192,37 @@ class TheScriptAnswersWithAnExitCode(unittest.TestCase):
             self.assertEqual(1, compare_reports.main([str(left), str(right)]))
 
 
+class ThePerRunBudgetIsNormalisedButTheBudgetItselfIsNot(unittest.TestCase):
+    """Two runs a second apart have spent different amounts of the rate limit.
+
+    That says nothing about whether the implementations agree - but `limit` and
+    `resource` describe the budget rather than the run, and a difference in either
+    would be a real one.
+    """
+
+    def test_ignores_the_remaining_budget_and_the_reset_window(self):
+        left = a_report()
+        right = a_report()
+        left["detail"]["rateLimit"] = {
+            "limit": 5000, "remaining": 4991, "resetUtc": "a", "resource": "core"
+        }
+        right["detail"]["rateLimit"] = {
+            "limit": 5000, "remaining": 4989, "resetUtc": "b", "resource": "core"
+        }
+        _, differences = compare_reports.compare(left, right)
+        self.assertEqual([], differences)
+
+    def test_still_reports_a_different_limit_or_resource(self):
+        for field, other in (("limit", 60), ("resource", "search")):
+            with self.subTest(field=field):
+                left = a_report()
+                right = a_report()
+                left["detail"]["rateLimit"] = {"limit": 5000, "remaining": 1, "resource": "core"}
+                right["detail"]["rateLimit"] = {"limit": 5000, "remaining": 1, "resource": "core"}
+                right["detail"]["rateLimit"][field] = other
+                _, differences = compare_reports.compare(left, right)
+                self.assertEqual(1, len(differences))
+
+
 if __name__ == "__main__":
     unittest.main()
