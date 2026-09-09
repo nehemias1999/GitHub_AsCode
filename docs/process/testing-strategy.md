@@ -160,6 +160,37 @@ entry deleted without trace loses the reason.
 Two guards arrive that have no PowerShell counterpart at all, and both are in
 `github-notes.md` as rows 15 and 16: the redirect refusal and the `data=` promotion.
 
+### One schema validator, and a guard that keeps it complete
+
+`src/github_as_code/schema.py`, per [ADR 0007](../adr/0007-one-schema-validator.md). The
+capability probe and the two engines are gone; the engine is `builtin` and a test asserts
+that name never varies.
+
+`tests/python/test_schema_coverage.py` walks every `*.schema.json` the repository ships,
+collects every keyword used, and **fails the gate on a keyword outside the implemented
+set**. Without it, adding `oneOf` to a schema would stop that part of the schema being
+checked, with no symptom other than a bad declaration getting through. This guard is only
+possible because there is one engine to be complete *against*.
+
+The keyword sets are two, on purpose: `IMPLEMENTED_KEYWORDS` are enforced,
+`ANNOTATION_KEYWORDS` deliberately carry no constraint. Listing the second set is what
+lets the guard tell "has no effect on validity, by decision" from "not implemented yet".
+
+**What the reduced validator was not checking, measured.** The shipped schemas use
+`pattern`, `minLength`, `maxLength`, `minItems`, `maxItems`, `uniqueItems`, `minimum`,
+`maximum` and `minProperties` - and the reduced PowerShell engine implements none of
+them. A declaration whose only fault is an empty `classes.<name>.description`, against a
+schema saying `minLength: 1`, passes `validate` on Windows PowerShell 5.1 today and is
+reported as `Valid (reduced validation)`. `tests/python/test_schema_coverage.py` pins
+both that case and the `owner/repo` name, so the port cannot quietly lose the difference.
+
+`tests/python/test_schema_conformance.py` buys the assurance a real library would give:
+for every schema and document the repository ships, plus a corpus of nine hand-written
+invalid documents, the built-in validator and `jsonschema` must reach the same verdict.
+If `jsonschema` is not installed it **skips loudly** - the runner prints every skip with
+its reason, and CI installs the library so the check actually runs somewhere. A skipped
+conformance test and a passing one must not look alike.
+
 ### Every guard is checked by planting the failure it names
 
 Not by reading it. A guard is a claim that something would be caught, and the only way
@@ -167,6 +198,12 @@ to know is to write the thing and watch it go red. Everything under `tests/pytho
 been through that: a third-party import, an unplaced module, a stale layer entry, a
 sideways import, a `data=` body, a positional body, a non-GET method, a `delete` in four
 spellings, a `delete_repo` scope, a `users/` path, and a `private` dictionary key.
+
+The `delete` guard has since fired on real code twice, and both times the code was
+renamed rather than the guard loosened - once on a `private = $privateCount` report
+field in phase 1, and once on a Python module docstring that used the word about ADR
+0007 dropping an engine. A guard that could tell prose from a call would be a guard with
+an exemption.
 
 It is not ceremony. The layering guard passed over a planted sideways import in silence
 the first time it was run that way, because the import reader had a hole in it.

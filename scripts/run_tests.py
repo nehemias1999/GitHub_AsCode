@@ -111,10 +111,21 @@ def check_tests(failures: list[str]) -> None:
         return
 
     result = unittest.TextTestRunner(verbosity=2).run(suite)
+    # testsRun counts a skipped test, so subtracting only failures and errors reports
+    # a skip as a pass - which is the exact thing the skip is meant to be visible
+    # against.
+    passed = result.testsRun - len(result.failures) - len(result.errors) - len(result.skipped)
     log(
-        f"Python suite: {result.testsRun - len(result.failures) - len(result.errors)} passed, "
-        f"{len(result.failures)} failed, {len(result.errors)} errored."
+        f"Python suite: {passed} passed, {len(result.failures)} failed, "
+        f"{len(result.errors)} errored, {len(result.skipped)} skipped."
     )
+
+    # Skips are named, not counted away. A skipped conformance test and a passing one
+    # must not look alike: the differential check against jsonschema is exactly the
+    # assurance ADR 0007 trades a runtime dependency for, and it is worth nothing if
+    # nobody notices the day it stops running.
+    for case, reason in result.skipped:
+        log(f"  SKIPPED {case}: {reason}")
     if not result.wasSuccessful():
         failures.append(
             f"{len(result.failures) + len(result.errors)} Python test(s) did not pass."

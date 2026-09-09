@@ -12,6 +12,26 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`src/github_as_code/schema.py` - one JSON Schema validator, built in.** ADR 0007
+  executed: the capability probe and the two engines are gone, the engine is `builtin` and
+  a test asserts the name never varies. It gains every keyword the reduced validator
+  skipped - `pattern`, the length, range, item and property bounds, and `uniqueItems` -
+  and the two things a naive implementation gets wrong: patterns compile with `re.ASCII`
+  because JSON Schema is ECMA-262 where `\d` is ASCII-only, and `const`/`enum` compare the
+  type first because `1 == True` in Python.
+- **A coverage guard, which is the part that is new.** Every `*.schema.json` the repository
+  ships is walked, every keyword collected, and the gate fails on one outside the
+  implemented set. Adding `oneOf` to a schema used to stop that part of the schema being
+  checked with no symptom at all; now it fails loudly and somebody either implements it or
+  writes the decision down.
+- **A differential conformance test against `jsonschema`**, a development dependency. For
+  every schema and document the repository ships, plus nine hand-written invalid
+  documents, the built-in validator and the library must reach the same verdict. When
+  `jsonschema` is absent it **skips loudly**: `scripts/run_tests.py` now prints every skip
+  with its reason, and CI installs the library so the check runs somewhere.
+- **`src/github_as_code/configuration.py`** - the .env loader, path resolution, the
+  declaration-choosing rule, the duplicate check, the schema-validating configuration
+  reader and the required-value reader.
 - **`src/github_as_code/http.py` - the transport, ported.** `GitHubAsCode.Http.psm1` in
   Python: base URL validation that describes a bad value rather than echoing it, the URL
   builder, the Bearer and Basic headers, the `Link` header parser, the pure retry policy,
@@ -81,6 +101,16 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The protected environment-variable list is a **union, not a translation**. `PYTHONPATH`,
+  `PYTHONHOME` and `PYTHONSTARTUP` are the names that make a .env file a code-execution
+  path for the interpreter now reading it; the PowerShell and .NET names stay because both
+  implementations read the same file during the transition, and a name harmless to Python
+  is not harmless to the PowerShell run reading the line beside it.
+- `scripts/run_tests.py` counts a skipped test as skipped rather than as passed.
+  `unittest`'s `testsRun` includes skips, so subtracting only failures and errors reported
+  a skip as a pass - against exactly the check the skip is meant to be visible for.
+- `docs/process/testing-strategy.md` records what the reduced validator was not checking,
+  measured on this machine rather than inferred.
 - `docs/process/testing-strategy.md` - the Python absence-test table, why it is not a
   translation of the PowerShell one, and a section on checking every guard by planting the
   failure it names. That is written down because it earned its place: the layering guard
