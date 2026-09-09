@@ -12,6 +12,11 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`docs/process/port-status.md`** - which implementation does what today, what differs
+  on purpose, and the exact four runs plus two comparisons that produce the evidence ADR
+  0006's deletion trigger requires. It also lists what the removal pull request has to do,
+  including the one ordering constraint that is easy to get wrong: the sensitive data gate
+  must be ported before the PowerShell gate goes, or the removal quietly drops a check.
 - **`src/github_as_code/rest.py`** - the GitHub half of talking to the API: the status
   guidance map handed to the transport as data, the rate limit and token shape readers,
   the `Link`-driven pagination that never computes a page number, and the account listing
@@ -126,6 +131,9 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- `docs/guides/getting-started.md` - both implementations, how the arguments map between
+  them, and both gates. Which one to use is stated rather than left to be inferred: Python
+  on Linux or in a container, since that is the requirement the port exists for.
 - The isolated-execution guard now RUNS `validate` under `python -I -S` instead of
   importing the package. Upgrading it immediately found a real defect: `main()` took
   `repository_root` as given, so a string - which the guard builds out of `sys.argv` -

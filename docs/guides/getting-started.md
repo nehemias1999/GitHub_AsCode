@@ -6,10 +6,35 @@
 
 **Audience.** Anyone running this for the first time.
 
+## Two implementations, for now
+
+Every command below has a Python equivalent, and both are supported until the port
+finishes. Which one to use: **Python if you are on Linux or in a container**, since that
+is the requirement the port exists for; either one on Windows.
+
+```powershell
+.\automations\repo-inventory\Invoke-RepositoryInventory.ps1 -Command validate
+```
+
+```bash
+python automations/repo-inventory/inventory.py validate
+```
+
+The arguments map one to one: `-Command X` becomes the first positional argument, and
+`-RepositoryName` / `-EnvFile` / `-ConfigurationPath` / `-ReportPath` become
+`--repository-name` / `--env-file` / `--configuration-path` / `--report-path`. Both read
+the same `.env` and the same declaration, and both write the same report shape.
+
+[port-status.md](../process/port-status.md) says where the port is and what removing the
+PowerShell half will take.
+
 ## Prerequisites
 
-PowerShell, and nothing else. Windows PowerShell 5.1 is the supported floor;
-PowerShell 7 also works.
+For the PowerShell half: PowerShell, and nothing else. Windows PowerShell 5.1 is the
+supported floor; PowerShell 7 also works.
+
+For the Python half: Python 3.11 or later, and nothing else - no package to install,
+which three guards in the suite prove.
 
 Running the **quality gate** needs two modules, which `bootstrap.ps1 -CheckOnly`
 reports on:
@@ -125,14 +150,33 @@ what makes any later finding believable: it proves the inventory and the compari
 agree. If the two runs differ over an unchanged account, the difference is not on
 GitHub.
 
-## 8. Run the gate before committing anything
+## 8. Run the gates before committing anything
+
+Both of them, because there are two implementations:
 
 ```powershell
 .\scripts\Invoke-Tests.ps1
 ```
 
-Parse check, PSScriptAnalyzer, Pester, and the sensitive data scan. CI runs the
-identical command, so "it passed locally" and "it passed in CI" mean the same thing.
+```bash
+python scripts/run_tests.py
+```
+
+The first is the parse check, PSScriptAnalyzer, Pester and the sensitive data scan. The
+second is the parse check, ruff and the Python suite - and it says on every run that it
+does **not** include the sensitive data scan, which is not ported yet, so a green line
+there is a narrower claim than a green line here.
+
+CI runs both identical commands, so "it passed locally" and "it passed in CI" mean the
+same thing.
+
+The Python gate needs `ruff`, and `jsonschema` for the differential schema conformance
+check. Without `jsonschema` that check skips rather than passing, and the run prints
+every skip with its reason:
+
+```bash
+python -m pip install "ruff>=0.6.0,<1.0.0" "jsonschema>=4.0.0,<5.0.0"
+```
 
 ## When something goes wrong
 
