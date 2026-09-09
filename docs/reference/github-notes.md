@@ -151,3 +151,21 @@ adopted it.
 | **The obvious implementation** | `$variables \| ConvertTo-Json`. |
 | **What it destroys** | Anything nested serialises as the **name of its type**, so the request goes out malformed. Combined with row 9, GraphQL then rejects it with an HTTP 200 - and nothing in the chain reports a problem the reader can act on. |
 | **Mitigation** | `-Depth` is always explicit, and an absence test walks the parse tree asserting no `ConvertTo-Json` call omits it. |
+
+### 15. urllib follows redirects and re-sends the Authorization header
+
+| | |
+| --- | --- |
+| **The API** | Not the API - the client, and only the Python one. `urllib.request` follows a 30x by default and builds the next request from the original headers, `Authorization` included. Unlike some HTTP clients, it does not strip the credential when the redirect crosses to another host. |
+| **The obvious implementation** | `urllib.request.urlopen(request)`. |
+| **What it destroys** | The credential. A Bearer token with account-wide read access is handed to whatever host the 30x names, with no error, no log line and a 200 at the end of it. This is the single most carefully reasoned decision in the PowerShell transport - `MaximumRedirection = 0` - and a naive port inverts it while looking like a faithful one. |
+| **Mitigation** | *Measured.* `src/github_as_code/http.py` builds its own opener with a redirect handler that refuses, and a redirect is reported as the configuration problem it almost always is. `tests/python/test_redirect_refusal.py` runs two servers on the loopback interface and asserts the second is never contacted at all - and, in the same file, that the **stock opener does forward the token**, so the guard is measured rather than assumed. If a future Python starts stripping the header, that second test fails and the reasoning gets reread instead of trusted. |
+
+### 16. `Request(data=...)` silently promotes a GET to a POST
+
+| | |
+| --- | --- |
+| **The API** | Not the API - the client. `urllib.request.Request` chooses its method from whether a body is present: with `data`, it is a POST, and no method argument is involved. |
+| **The obvious implementation** | Add a body to an existing request to send something. |
+| **What it destroys** | Whatever a POST to that endpoint creates. It is the Python write vector, and it has no PowerShell counterpart: there, `-Method` was the only way in and the whole guard set was shaped around that one name. |
+| **Mitigation** | `tests/python/test_write_boundary.py` reads the parse tree and fails on any call carrying `data`, on any `Request` built with a second positional argument, and on any `method=` that is not the literal `'GET'`. Verified by planting each of those three calls and watching the guard name it. |
