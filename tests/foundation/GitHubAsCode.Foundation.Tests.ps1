@@ -240,3 +240,43 @@ Describe 'Get-GitHubAsCodeRequiredValue' {
         }
     }
 }
+
+Describe 'Write-PlanSummary closes with what the command actually did' {
+
+    BeforeAll {
+        # Write-Information writes to stream 6. Redirecting it is the only way to assert
+        # on the sentence a person reads, which is the thing that was wrong: the reports
+        # were already correct and the console was not.
+        function Get-SummaryText {
+            param([Parameter(Mandatory)] [string] $Command)
+
+            $plan = New-Plan -Command $Command -Target 'EXAMPLE-owner'
+            $operation = New-PlanOperation -Resource 'repository' -Name 'EXAMPLE-repo' `
+                -Action 'exists' -Status 'ok' -Reason 'Present on the account.'
+            Add-PlanOperation -Plan $plan -Operation $operation
+
+            return ((Write-PlanSummary -Plan $plan 6>&1) | ForEach-Object { "$_" }) -join "`n"
+        }
+    }
+
+    It 'does not claim a comparison that inventory never ran' {
+        # inventory does not read the declaration - Automations.Tests.ps1 asserts that
+        # structurally, from the parse tree. But the shared summary still signed off with
+        # "the live state already matches the declaration", so the one line an operator
+        # actually reads announced the result of a comparison that had not happened, in a
+        # run whose own per-operation reasons said "Present on the account."
+        $text = Get-SummaryText -Command 'inventory'
+
+        $text | Should -Not -Match 'matches the declaration'
+        $text | Should -Match 'compares nothing'
+    }
+
+    It 'still says a plan matched the declaration, because that one did compare' {
+        # The other half of the fix: the wording must change for inventory WITHOUT
+        # weakening what plan reports. plan really did compare, and saying so is the
+        # whole point of the rung.
+        $text = Get-SummaryText -Command 'plan'
+
+        $text | Should -Match 'matches the declaration'
+    }
+}

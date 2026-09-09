@@ -256,7 +256,14 @@ if ($Command -eq 'validate') {
 # declaration. Same reasoning, and it had not been applied here.
 $usingDefaultEnvFile = -not $PSBoundParameters.ContainsKey('EnvFile')
 $environmentFiles = if ($usingDefaultEnvFile) { @((Join-Path $repositoryRoot '.env')) } else { $EnvFile }
-Import-GitHubAsCodeEnvironment -Path $environmentFiles -Optional:$usingDefaultEnvFile
+# Discarded deliberately. Import-GitHubAsCodeEnvironment RETURNS the names it set - by
+# design, so a caller can log or assert them - and an uncaptured return value in
+# PowerShell is not discarded, it is written to the output stream. So every
+# authenticated run ended by printing the seven variable names after its report paths,
+# as if they were part of the result. Names, never values, so nothing leaked; but it is
+# output this script did not choose to emit, and it lands in anything that pipes or
+# redirects the run.
+$null = Import-GitHubAsCodeEnvironment -Path $environmentFiles -Optional:$usingDefaultEnvFile
 
 $gitHubContext = Get-GitHubContext -Context $projectContext
 Write-ModuleLog "Account: $($gitHubContext.Owner) at $($gitHubContext.BaseUrl), token from $($gitHubContext.TokenEnvironmentName)."

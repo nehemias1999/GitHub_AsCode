@@ -349,7 +349,23 @@ function Write-PlanSummary {
     }
 
     if ($summary.pending -eq 0 -and $summary.blocked -eq 0) {
-        Write-Information '  Nothing to change: the live state already matches the declaration.' -InformationAction Continue
+        # Worded by command, because inventory does not read the declaration at all - it
+        # reports what is live. The single sentence this used to print claimed the live
+        # state "already matches the declaration", which after an inventory announces the
+        # result of a comparison that never ran, and contradicts the per-operation reasons
+        # in the same run ("Present on the account. Notable: no topics."). It is the same
+        # failure as a silent truncation above: a closing line that overstates what the
+        # command actually did.
+        #
+        # This branches on the ladder vocabulary, not on any resource, so the shared layer
+        # stays free of domain rules: validate/inventory/plan/apply is the contract every
+        # automation implements.
+        if ($Plan.command -eq 'inventory') {
+            Write-Information '  Nothing outstanding: inventory reports live state and compares nothing.' -InformationAction Continue
+        }
+        else {
+            Write-Information '  Nothing to change: the live state already matches the declaration.' -InformationAction Continue
+        }
     }
 }
 
