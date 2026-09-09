@@ -191,6 +191,37 @@ If `jsonschema` is not installed it **skips loudly** - the runner prints every s
 its reason, and CI installs the library so the check actually runs somewhere. A skipped
 conformance test and a passing one must not look alike.
 
+### The command ladder, end to end and offline
+
+`tests/python/test_repo_inventory.py`. `validate` runs for real against the shipped
+template; the rungs that need an account run against a fake transport answering from the
+committed fixtures - the same fixtures the Pester suite uses, so both implementations are
+asked about the same bytes.
+
+The assertions that matter are the negative ones: `inventory` must not consult the
+declaration, a filtered run must not answer about repositories nobody asked about, a
+truncated listing must block rather than truncate quietly, and nothing anywhere may reach
+the transport asking for something other than a read. A second `plan` over unchanged state
+must produce byte-identical operations, which is level 3 of the writer strategy above
+executed rather than promised.
+
+### The parity instrument
+
+`scripts/compare_reports.py` is what turns two live reports - one from each
+implementation - into the answer ADR 0006's deletion trigger needs. It has its own tests,
+because a comparison tool that reports agreement *because it is not looking* would
+authorise removing the only oracle the port has.
+
+The `declarationFingerprint` is checked **first**, and a mismatch stops the comparison
+rather than adding a line to it: reporting forty field differences when the two runs read
+different declarations buries the only fact that matters under noise that follows from
+it. Exit 2 means "you compared the wrong things", exit 1 means "they disagree", and the
+two must not look alike.
+
+What it normalises is fixed and small: the correlation id, the timestamps, the user and
+host, the per-run paths, and `schemaEngine` - which differs by design, because ADR 0007
+is the reason it does.
+
 ### Every guard is checked by planting the failure it names
 
 Not by reading it. A guard is a claim that something would be caught, and the only way

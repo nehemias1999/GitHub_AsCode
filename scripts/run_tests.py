@@ -31,7 +31,10 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PYTHON_TESTS = REPO_ROOT / "tests" / "python"
-SOURCE_ROOTS = ("src", "tests/python", "scripts")
+# automations/ is included because the Python entry points live there, beside the
+# PowerShell ones. Left out, they would be neither parsed nor linted by anything - the
+# same shape of gap as a test directory nobody points the runner at.
+SOURCE_ROOTS = ("src", "tests/python", "scripts", "automations")
 
 
 def log(message: str) -> None:

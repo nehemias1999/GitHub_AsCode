@@ -12,6 +12,17 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`src/github_as_code/rest.py`** - the GitHub half of talking to the API: the status
+  guidance map handed to the transport as data, the rate limit and token shape readers,
+  the `Link`-driven pagination that never computes a page number, and the account listing
+  that reads the authenticated endpoint.
+- **`src/github_as_code/automations/repo_inventory.py`** and a thin entry point at
+  `automations/repo-inventory/inventory.py`. The same four rungs, the same exit codes,
+  and the same refusal to let `inventory` consult the declaration.
+- **`scripts/compare_reports.py`** - the parity instrument ADR 0006's deletion trigger
+  needs, with its own tests. It checks `declarationFingerprint` first and stops on a
+  mismatch, because reporting forty field differences when the two runs read different
+  declarations buries the only fact that matters.
 - **`src/github_as_code/repository.py`** - the domain rules, as pure functions. The topic
   union that stops `PUT /topics` destroying what nobody declared, the topic and name
   validators, the snapshot reducer, and the four-case comparison whose most important
@@ -115,6 +126,16 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- The isolated-execution guard now RUNS `validate` under `python -I -S` instead of
+  importing the package. Upgrading it immediately found a real defect: `main()` took
+  `repository_root` as given, so a string - which the guard builds out of `sys.argv` -
+  reached `root / "foundation"` and failed with a `TypeError` about str and str. The
+  weaker version passed over it.
+- The Python CI legs gain the offline `validate` step the PowerShell job has run since
+  phase 1.
+- `scripts/run_tests.py` parses and lints `automations/` too. The Python entry points live
+  there beside the PowerShell ones, and left out they would be neither parsed nor linted
+  by anything.
 - The protected environment-variable list is a **union, not a translation**. `PYTHONPATH`,
   `PYTHONHOME` and `PYTHONSTARTUP` are the names that make a .env file a code-execution
   path for the interpreter now reading it; the PowerShell and .NET names stay because both
