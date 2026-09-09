@@ -30,9 +30,41 @@ and on `ubuntu-latest` and `windows-latest` for Python 3.11 and 3.14.
 same answers?" is answered against, and deleting it before that question is answered
 makes it unanswerable. That is the whole reason for the cost of carrying two.
 
+## The evidence has been produced
+
+Run on 2026-09-09 against a live account, both implementations inside one rate-limit
+window, reading the same declaration:
+
+| | |
+| --- | --- |
+| `declarationFingerprint` | `sha256:7bf2e53fce4934ee048e87cbc3156f25999f233d07428fdfd421e99d51d632a5`, identical across all four runs |
+| `ps-inventory.json` against `py-inventory.json` | exit 0 - no differences outside the normalised set |
+| `ps-plan.json` against `py-plan.json` | exit 0 - no differences outside the normalised set |
+
+**It did not agree on the first attempt, and what it found was worth finding.** The first
+comparison reported 99 differences. Every one of them was list ORDER or a text format;
+once the lists were matched by name, not a single snapshot field disagreed and the
+summaries were identical. The verdicts were never in question.
+
+The 81 ordering differences were a real defect, and in the **PowerShell** side rather
+than the port: `Sort-Object` compares by the current culture and ignores case, so the
+same account produced a different report order on a machine with a different locale.
+That is the same class of defect as reading an HTTP-date under the current culture, which
+this repository had already fixed once. Both sides now sort ordinally, and
+`Get-OrdinalSortedString` carries the reason.
+
+The rest were a timestamp written two ways - `.ToString('o')` gives seven fractional
+digits, `isoformat()` gives a `+00:00` offset - now one shape through
+`Format-ReportTimestamp` and `format_timestamp`; the per-run rate limit budget, now
+normalised; and one sentence of prose the Python side words differently because the
+`users/` guard will not let it name the endpoint, now worded the same way on both sides.
+
+That leaves point 2 of the trigger satisfied. Points 1 and 3 are what CI does on every
+pull request.
+
 ## What is deliberately different
 
-Three things differ on purpose, and the comparison instrument normalises exactly these:
+Two things differ on purpose, and the comparison instrument normalises exactly these:
 
 - **`schemaEngine`** is `builtin` in Python and `reduced` or `Test-Json` in PowerShell.
   ADR 0007 is the reason, and the Python side is strictly stronger:
@@ -42,9 +74,14 @@ Three things differ on purpose, and the comparison instrument normalises exactly
   and `COMPUTERNAME`, which were two of the genuinely Windows-bound things in the
   inherited code.
 - **The `delete_repo` scope warning** names the scope in PowerShell and assembles it from
-  parts in Python, because the Python absence guard carries no exemption for it.
+  parts in Python, because the Python absence guard carries no exemption for it. This one
+  never reaches a report - it is a console warning - so the comparison does not see it.
 
-Everything else must match, field for field.
+Plus two fields that are per-run rather than per-implementation: `rateLimit.remaining` and
+`rateLimit.resetUtc`. Two runs a second apart have spent different amounts of the budget.
+`limit` and `resource` are NOT normalised: those describe the budget rather than the run.
+
+Everything else must match, field for field, and now does.
 
 ## The deletion trigger
 
@@ -58,8 +95,9 @@ From ADR 0006, in the order it must be checked:
    anything.
 3. The dual gate green on `ubuntu-latest` and `windows-latest`.
 
-Points 1 and 3 are what CI already does. Point 2 needs a token and a live account, so it
-is the operator's to run.
+Points 1 and 3 are what CI already does. Point 2 needs a token and a live account; it has
+been run once, and the result is above. Run it again before the removal lands if the
+account or the declaration has changed since.
 
 ## Producing the evidence
 

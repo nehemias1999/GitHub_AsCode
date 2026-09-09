@@ -184,7 +184,15 @@ function New-HttpUri {
         # with one or two keys it is not even observable. It stops the same request
         # from producing two different URLs between runs, which is what a log line or
         # a cache key would disagree about later.
-        $pairs = foreach ($key in (@($Query.Keys) | Sort-Object)) {
+        #
+        # Ordinal rather than Sort-Object, which orders by the current culture: a URL
+        # that differs by machine locale is the same defect one level down. This
+        # repeats Get-OrdinalSortedString in GitHubAsCode.Plan rather than importing
+        # it, because Http and Plan are siblings and a transport depending on the plan
+        # model would be the sideways dependency architecture.md forbids.
+        $sortedKeys = [string[]] @($Query.Keys)
+        [array]::Sort($sortedKeys, [StringComparer]::Ordinal)
+        $pairs = foreach ($key in $sortedKeys) {
             $value = $Query[$key]
             if ($null -eq $value) { continue }
             '{0}={1}' -f [Uri]::EscapeDataString([string] $key), [Uri]::EscapeDataString([string] $value)

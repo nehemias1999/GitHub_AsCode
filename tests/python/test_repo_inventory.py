@@ -340,6 +340,25 @@ class ARunAgainstAnAccount(unittest.TestCase):
         self.assertTrue(written["detail"]["listing"]["truncated"])
         self.assertTrue(any(op["resource"] == "accountListing" for op in written["operations"]))
 
+    def test_every_list_in_the_report_is_ordered_ordinally(self):
+        # Where the 81 differences actually were. Repository names keep their case, so
+        # a culture-aware sort orders them differently from an ordinal one - and a
+        # report whose order depends on the machine locale cannot be compared with one
+        # produced anywhere else.
+        transport = _FakeTransport()
+        self._patched(transport)
+        _, written = self._run("inventory", transport)
+
+        for field in ("withoutLicense", "withoutTopics"):
+            with self.subTest(field=field):
+                values = written["detail"]["finding"][field]
+                self.assertEqual(sorted(values), values)
+
+        names = [item["name"] for item in written["detail"]["repository"]]
+        self.assertEqual(sorted(names), names)
+        self.assertEqual(sorted(op["name"] for op in written["operations"]),
+                         [op["name"] for op in written["operations"]])
+
     def test_never_asks_the_transport_for_anything_but_a_read(self):
         # The negative assertion that matters most in the whole suite.
         transport = _FakeTransport()

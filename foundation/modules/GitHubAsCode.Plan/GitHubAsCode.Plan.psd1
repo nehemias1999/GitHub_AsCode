@@ -9,6 +9,7 @@
     PowerShellVersion = '5.1'
 
     FunctionsToExport = @(
+        'Get-OrdinalSortedString',
         'Get-PlanStatusName',
         'Get-PlanActionName',
         'New-Plan',

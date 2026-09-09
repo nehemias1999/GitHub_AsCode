@@ -193,7 +193,9 @@ def _build_detail(
             {
                 "isClassic": bool(token.is_classic),
                 "scope": list(token.scope),
-                "expiresUtc": token.expires_utc.isoformat() if token.expires_utc else "",
+                "expiresUtc": (
+                    report.format_timestamp(token.expires_utc) if token.expires_utc else ""
+                ),
                 "daysUntilExpiry": token.days_until_expiry,
             }
             if token
@@ -204,7 +206,7 @@ def _build_detail(
                 "limit": listing.rate_limit.limit,
                 "remaining": listing.rate_limit.remaining,
                 "resetUtc": (
-                    listing.rate_limit.reset_utc.isoformat()
+                    report.format_timestamp(listing.rate_limit.reset_utc)
                     if listing.rate_limit.reset_utc
                     else ""
                 ),

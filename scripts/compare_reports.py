@@ -52,6 +52,13 @@ NORMALISED = frozenset(
         "detail.runLog",
         "detail.declarationPath",
         "generatedAt",
+        # The budget as each run observed it. Two runs a second apart have spent
+        # different amounts of it, and the reset window can roll over between them, so
+        # these say nothing about whether the implementations agree. `limit` and
+        # `resource` are NOT here: those describe the budget rather than the run, and a
+        # difference in either would be a real one.
+        "detail.rateLimit.remaining",
+        "detail.rateLimit.resetUtc",
     }
 )
 

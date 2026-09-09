@@ -41,6 +41,66 @@ $script:PlanAction = @(
     'skip'       # intentionally out of scope for this run
 )
 
+function Get-OrdinalSortedString {
+    <#
+    .SYNOPSIS
+        Sorts strings by ordinal value, optionally removing duplicates.
+
+    .DESCRIPTION
+        Sort-Object orders by the CURRENT CULTURE and ignores case by default, so the
+        same input produces a different order on two machines with different locales.
+        A report whose list order depends on where it ran cannot be compared with one
+        produced anywhere else - and that is the same class of defect as reading an
+        HTTP-date under the current culture, which this repository already fixed once
+        in Get-HttpRetryAfterSecond.
+
+        Measured rather than reasoned about: one live inventory put through both
+        implementations differed in 81 fields, every one of them list ORDER and none of
+        them a value. Sort-Object placed a lowercase name before an uppercase one
+        because it compares case-insensitively; an ordinal sort does not.
+
+        It lives in this module because Plan is the lowest module every caller already
+        loads. GitHubAsCode.Http needs the same ordering for its query keys and
+        deliberately does NOT import this: Http and Plan are siblings, and a transport
+        depending on the plan model would be the sideways dependency
+        docs/reference/architecture.md forbids. Three lines repeated there, with a
+        comment saying why, is the smaller cost.
+
+    .PARAMETER Value
+        Strings to sort. An empty or null input yields nothing rather than failing.
+
+    .PARAMETER Unique
+        Remove duplicates, compared ordinally.
+
+    .EXAMPLE
+        Get-OrdinalSortedString -Value @('b', 'A')
+
+        A
+        b
+
+    .OUTPUTS
+        The sorted strings.
+    #>
+    [CmdletBinding()]
+    [OutputType([string[]])]
+    param(
+        [Parameter(Mandatory)] [AllowEmptyCollection()] [AllowNull()] [string[]] $Value,
+        [switch] $Unique
+    )
+
+    $items = @($Value | Where-Object { $null -ne $_ })
+
+    if ($Unique) {
+        $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        $items = @($items | Where-Object { $seen.Add($_) })
+    }
+    if ($items.Count -le 1) { return @($items) }
+
+    $sorted = [string[]] $items
+    [array]::Sort($sorted, [StringComparer]::Ordinal)
+    return @($sorted)
+}
+
 function Get-PlanStatusName {
     <#
     .SYNOPSIS
@@ -370,6 +430,7 @@ function Write-PlanSummary {
 }
 
 Export-ModuleMember -Function @(
+    'Get-OrdinalSortedString',
     'Get-PlanStatusName',
     'Get-PlanActionName',
     'New-Plan',

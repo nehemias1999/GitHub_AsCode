@@ -280,3 +280,64 @@ Describe 'Write-PlanSummary closes with what the command actually did' {
         $text | Should -Match 'matches the declaration'
     }
 }
+
+Describe 'Get-OrdinalSortedString' {
+
+    It 'orders by ordinal value, not by the culture of the machine' {
+        # THE regression, and it was measured on a live account: one inventory put
+        # through both implementations differed in 81 fields, every one of them list
+        # ORDER. Sort-Object compares case-insensitively and by current culture, so it
+        # placed 'therapist...' before 'TUP_...'; an ordinal sort puts every uppercase
+        # letter first. A report whose order depends on where it ran cannot be compared
+        # with one produced anywhere else.
+        Get-OrdinalSortedString -Value @('therapist', 'TUP') | Should -Be @('TUP', 'therapist')
+    }
+
+    It 'agrees with Sort-Object on input that has no case to disagree about' {
+        # So the change is not doing anything beyond the case ordering.
+        # Not $input: that is PowerShell's automatic pipeline enumerator, and
+        # PSScriptAnalyzer is right to refuse an assignment to it.
+        $names = @('charlie', 'alpha', 'bravo')
+        Get-OrdinalSortedString -Value $names | Should -Be @($names | Sort-Object)
+    }
+
+    It 'removes duplicates ordinally, so two casings are two values' {
+        # Sort-Object -Unique would collapse 'A' and 'a' into one, which for a topic
+        # payload would silently drop a member of the collection being sent.
+        Get-OrdinalSortedString -Value @('A', 'a', 'A') -Unique | Should -Be @('A', 'a')
+    }
+
+    It 'returns nothing for an empty input rather than failing' {
+        @(Get-OrdinalSortedString -Value @()).Count | Should -Be 0
+    }
+
+    It 'is stable, so the same input twice produces the same order' {
+        $first = Get-OrdinalSortedString -Value @('b', 'A', 'c')
+        $second = Get-OrdinalSortedString -Value @('b', 'A', 'c')
+        $first | Should -Be $second
+    }
+}
+
+Describe 'Format-ReportTimestamp' {
+
+    It 'writes the one shape both implementations write' {
+        # .ToString('o') gives seven fractional digits and Python's isoformat() gives a
+        # +00:00 offset. Both are ISO 8601 and neither is wrong, which is exactly why
+        # the shape has to be chosen: a field that differs in spelling cannot be
+        # compared between the two implementations.
+        $when = [datetime]::new(2027, 9, 7, 3, 0, 0, [DateTimeKind]::Utc)
+        Format-ReportTimestamp -Value $when | Should -Be '2027-09-07T03:00:00Z'
+    }
+
+    It 'carries no fractional part, because nothing here is measured that finely' {
+        $when = [datetime]::new(2027, 9, 7, 3, 0, 0, 123, [DateTimeKind]::Utc)
+        Format-ReportTimestamp -Value $when | Should -Not -Match '\.'
+    }
+
+    It 'converts to UTC, so a local value cannot be written under a name saying Utc' {
+        $local = [datetime]::new(2027, 9, 7, 3, 0, 0, [DateTimeKind]::Local)
+        $formatted = Format-ReportTimestamp -Value $local
+        $formatted | Should -Be $local.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+        $formatted | Should -Match 'Z$'
+    }
+}
