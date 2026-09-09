@@ -12,6 +12,29 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`src/github_as_code/http.py` - the transport, ported.** `GitHubAsCode.Http.psm1` in
+  Python: base URL validation that describes a bad value rather than echoing it, the URL
+  builder, the Bearer and Basic headers, the `Link` header parser, the pure retry policy,
+  the Retry-After reader and the JSON-or-explain-why-not decoder. Read-only by
+  construction, as before: no parameter exists that could make it write.
+- **A redirect-refusing opener, and two servers that prove it.** `urllib.request` follows
+  a 30x by default and rebuilds the next request from the original headers, `Authorization`
+  included - so a faithful-looking port hands an account-wide token to whatever host the
+  redirect names, with no error and no log line. That inverts `MaximumRedirection = 0`,
+  the most carefully reasoned decision in the PowerShell transport.
+  `tests/python/test_redirect_refusal.py` runs two servers on the loopback interface and
+  asserts the second is never contacted at all - and, in the same file, that the **stock
+  opener does forward the token**. The hazard is measured, not assumed: if a future Python
+  starts stripping the header, that test fails and the reasoning gets reread.
+- **`tests/python/test_write_boundary.py` - the absence tests, reshaped for the language.**
+  Not a translation: the write vector is different. `Request(data=...)` promotes a GET to a
+  POST with nothing at the call site that reads like a write, so the guards assert on the
+  shape of the call rather than on the presence of a name. Eight guards, each verified by
+  planting the failure it names and watching it go red.
+- `docs/reference/github-notes.md` gains rows 15 and 16, the two client traps Python
+  introduces. Row 15 is marked *measured*.
+
+
 - **The Python scaffolding, and the guards that come before any ported code.** `pyproject.toml`
   declaring `dependencies = []`, the `github_as_code` package under `src/`, and
   `scripts/run_tests.py` - the Python gate, with the same shape as the PowerShell one:
@@ -57,6 +80,13 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `oneOf` to a schema would stop it being checked with no symptom.
 
 ### Changed
+
+- `docs/process/testing-strategy.md` - the Python absence-test table, why it is not a
+  translation of the PowerShell one, and a section on checking every guard by planting the
+  failure it names. That is written down because it earned its place: the layering guard
+  added last week passed over a planted sideways import in silence, and only planting it
+  found the hole in the import reader.
+
 
 - `AGENTS.md` - "finished" now means **both** gates pass, for as long as both
   implementations exist.

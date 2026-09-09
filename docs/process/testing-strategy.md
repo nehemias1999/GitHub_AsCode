@@ -135,6 +135,42 @@ pip, so the rule needs teeth. Three layers, because they fail differently:
 Each of them fails when it finds nothing to read, rather than passing over an empty
 tree.
 
+### The absence tests, ported to a different write vector
+
+`tests/python/test_write_boundary.py`, read from the parse tree for the same reason the
+PowerShell ones are. It is **not** a translation of the table above, because the way a
+write would arrive is not the same. PowerShell had exactly one way in, `-Method`, and
+every guard was shaped around that name. Python has two, and neither reads as a method:
+
+| Guard | Protects against |
+| --- | --- |
+| No call passes `data`, and no `Request` takes a second positional argument | The Python write vector: urllib chooses POST from the presence of a body, so a write arrives with nothing at the call site that looks like one |
+| Every `method=` is the literal `'GET'` | The obvious write, and the one a variable hides |
+| `urllib.request` is imported by exactly one module, and that module is where it is expected to be | Losing the single place a write could be added - including by renaming the transport, which would otherwise leave the guard passing over nothing |
+| No `delete`, in any spelling: string, name, attribute or function | The one method this repository never acquires |
+| `delete_repo` appears nowhere | A token existing that can delete a repository |
+| No string literal begins `users/` or contains `/users/` | Reading the account listing from the endpoint that hides private repositories |
+| No dictionary key named `private`, `visibility`, `archived`, `is_template` or `default_branch` | A generic writer reaching the `PATCH /repos` fields that look ordinary and are not |
+
+The `ConvertTo-Json -Depth` guard is **not** ported: `json.dumps` has no depth limit, so
+it has nothing to test. Its entry in `github-notes.md` is rewritten rather than removed
+when the PowerShell goes - that document is the ledger of why each guard exists, and an
+entry deleted without trace loses the reason.
+
+Two guards arrive that have no PowerShell counterpart at all, and both are in
+`github-notes.md` as rows 15 and 16: the redirect refusal and the `data=` promotion.
+
+### Every guard is checked by planting the failure it names
+
+Not by reading it. A guard is a claim that something would be caught, and the only way
+to know is to write the thing and watch it go red. Everything under `tests/python/` has
+been through that: a third-party import, an unplaced module, a stale layer entry, a
+sideways import, a `data=` body, a positional body, a non-GET method, a `delete` in four
+spellings, a `delete_repo` scope, a `users/` path, and a `private` dictionary key.
+
+It is not ceremony. The layering guard passed over a planted sideways import in silence
+the first time it was run that way, because the import reader had a hole in it.
+
 ### Dependencies point downward, and now something checks
 
 `docs/reference/architecture.md` has said this since phase 1 and nothing enforced it.
