@@ -163,9 +163,8 @@ python scripts/run_tests.py
 ```
 
 The first is the parse check, PSScriptAnalyzer, Pester and the sensitive data scan. The
-second is the parse check, ruff and the Python suite - and it says on every run that it
-does **not** include the sensitive data scan, which is not ported yet, so a green line
-there is a narrower claim than a green line here.
+second is the parse check, ruff, the Python suite and the same scan. Both cover the same
+ground; they agree on this tree file for file.
 
 CI runs both identical commands, so "it passed locally" and "it passed in CI" mean the
 same thing.

@@ -12,6 +12,13 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`scripts/check_sensitive_data.py` - the sensitive data gate, ported**, and wired into
+  `scripts/run_tests.py`. Both gates now run it and they agree on this tree: 102 files
+  scanned, 38 skipped as ignored, no findings. That was the one ordering constraint
+  `docs/process/port-status.md` names before the PowerShell gate can be removed - port
+  the scan first, or the removal quietly drops a check while every gate stays green.
+  Unlike the original it is importable, so the suite calls the functions rather than
+  extracting them from the file with a regular expression.
 - **`docs/process/port-status.md`** - which implementation does what today, what differs
   on purpose, and the exact four runs plus two comparisons that produce the evidence ADR
   0006's deletion trigger requires. It also lists what the removal pull request has to do,
@@ -131,6 +138,11 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- `scripts/run_tests.py` no longer says the sensitive data scan is missing from it,
+  because it is not. A test asserts that sentence stays gone: if it comes back, a check
+  has been dropped.
+- The Python CI legs seed the deny-term layer from the same `SENSITIVE_TERMS` secret the
+  PowerShell job uses, and pass `--require-deny-terms` when it is set.
 - `docs/guides/getting-started.md` - both implementations, how the arguments map between
   them, and both gates. Which one to use is stated rather than left to be inferred: Python
   on Linux or in a container, since that is the requirement the port exists for.

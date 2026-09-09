@@ -22,6 +22,7 @@ removes 7,700 lines.
 | Domain | `GitHub.Repository` | `github_as_code.repository` |
 | Entry point | `Invoke-RepositoryInventory.ps1` | `automations/repo-inventory/inventory.py` |
 | Gate | `scripts/Invoke-Tests.ps1` | `scripts/run_tests.py` |
+| Secret scan | `scripts/Test-NoSensitiveData.ps1` | `scripts/check_sensitive_data.py` |
 
 Every pull request leaves both green, on `windows-latest` for the two PowerShell engines
 and on `ubuntu-latest` and `windows-latest` for Python 3.11 and 3.14.
@@ -138,9 +139,9 @@ Once the evidence is in hand:
 - delete `foundation/`, `tests/foundation/`, `tests/automations/`, `tests/TestHelpers.ps1`,
   `scripts/Invoke-Tests.ps1`, `scripts/Test-NoSensitiveData.ps1`, `scripts/bootstrap.ps1`,
   `PSScriptAnalyzerSettings.psd1` and `Invoke-RepositoryInventory.ps1`;
-- port the sensitive data gate first, or delete it last. `scripts/run_tests.py` says on
-  every run that the scan is not part of it, and that line must stop being true before
-  the PowerShell gate goes - otherwise the removal quietly drops a check;
+- ~~port the sensitive data gate first~~ **done.** `scripts/check_sensitive_data.py`
+  runs in the Python gate, and the two agree on this tree: 102 files scanned, 38 skipped
+  as ignored, no findings. That was the one ordering constraint, and it is satisfied;
 - drop the `gate` job from `.github/workflows/ci.yml`;
 - rewrite, rather than remove, the `ConvertTo-Json` row in
   [github-notes.md](../reference/github-notes.md). That document is the ledger of why each
