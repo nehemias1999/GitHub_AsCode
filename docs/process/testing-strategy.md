@@ -20,9 +20,15 @@ on a Linux agent to test a tool whose whole point is running there without it wo
 an odd thing to write down. When the PowerShell goes, `Invoke-Tests.ps1` goes with it
 and one gate is left.
 
-The Python gate does **not** run the sensitive data scan, and says so on every run
-rather than leaving it to be noticed. `scripts/Test-NoSensitiveData.ps1` is not ported
-yet, so a green Python run is a narrower claim than a green PowerShell one.
+Both gates now run the sensitive data scan. Until `scripts/check_sensitive_data.py`
+existed, the Python one said on every run that it did not - because a green line covering
+less than the other gate must not look like one covering the same. That sentence has
+stopped being true, which is the condition [port-status.md](port-status.md) sets before
+the PowerShell gate can be removed: port the scan first, or the removal quietly drops a
+check while every gate stays green.
+
+The two agree on this tree - 102 files scanned, 38 skipped as ignored, no findings -
+which is the cheapest confirmation that the port did not narrow what is covered.
 
 ## One definition of "passes"
 
@@ -111,8 +117,8 @@ its own template, on both `powershell` and `pwsh`, with no network and no creden
 
 ## What the Python gate checks, and what it cannot
 
-`scripts/run_tests.py`. Parse, ruff, `unittest`. Same shape and same reasoning as the
-PowerShell runner: increasing order of cost, every failure adds a line rather than
+`scripts/run_tests.py`. Parse, ruff, `unittest`, sensitive data scan. Same shape and
+same reasoning as the PowerShell runner: increasing order of cost, every failure adds a line rather than
 stopping the run, a missing linter is a **failure** and not a skip, and an empty test
 discovery is a failure too - green from a run that tested nothing looks exactly like
 green from a run that tested something.

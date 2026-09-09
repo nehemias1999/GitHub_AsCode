@@ -11,14 +11,16 @@ agent to test a tool whose whole point is running there without it would be an o
 thing to write down. When the PowerShell implementation is deleted, Invoke-Tests.ps1
 goes with it and this file is the gate.
 
-What this gate does NOT run, so that a green line here is not read as more than it is:
-the sensitive data scan. That lives in scripts/Test-NoSensitiveData.ps1, is 525 lines
-of PowerShell, and is not ported yet. The run says so rather than leaving it to be
-noticed.
+Four checks now, not three: the sensitive data scan is ported and runs here too. Until
+it was, this file said on every run that the scan was NOT part of it - because a green
+line covering less than the other gate must not look like one covering the same. That
+sentence has stopped being true, which is the condition docs/process/port-status.md sets
+before the PowerShell gate can be removed.
 
 Usage:
     python scripts/run_tests.py
     python scripts/run_tests.py --skip lint
+    python scripts/run_tests.py --require-deny-terms
 """
 
 import argparse
@@ -28,6 +30,10 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import check_sensitive_data  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PYTHON_TESTS = REPO_ROOT / "tests" / "python"
@@ -135,14 +141,46 @@ def check_tests(failures: list[str]) -> None:
         )
 
 
+def check_secrets(failures: list[str], require_deny_terms: bool) -> None:
+    """The sensitive data scan, in-process rather than as a subprocess.
+
+    Calling it directly is what the PowerShell runner could not do: its gate is a
+    script, so the suite that tests it has to extract a function from the file with a
+    regular expression. Here the exit code is computed from the same result object the
+    tests assert on.
+    """
+    log("Running the sensitive data gate...")
+    code = check_sensitive_data.main(["--require-deny-terms"] if require_deny_terms else [])
+    # Two failure modes, and telling them apart matters: findings mean something was
+    # found, exit 2 means the deny-list layer was required and never ran. Reporting the
+    # second as "reported findings" would send somebody looking for a match that does
+    # not exist.
+    if code == 2:
+        failures.append(
+            "The sensitive data gate could not run its deny-list layer, and it was required."
+        )
+    elif code != 0:
+        failures.append("The sensitive data gate reported findings.")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--skip",
         action="append",
-        choices=["parse", "lint", "tests"],
+        choices=["parse", "lint", "tests", "secrets"],
         default=[],
         help="A check to leave out deliberately.",
+    )
+    parser.add_argument(
+        "--require-deny-terms",
+        action="store_true",
+        help=(
+            "Fail when the sensitive data gate cannot run its deny-list layer. Off by "
+            "default: that layer reads a file excluded from version control, so a fresh "
+            "clone has none, and a check that cannot pass on a fresh clone is a check "
+            "people learn to ignore."
+        ),
     )
     arguments = parser.parse_args()
 
@@ -155,11 +193,8 @@ def main() -> int:
         check_lint(failures)
     if "tests" not in arguments.skip:
         check_tests(failures)
-
-    log(
-        "The sensitive data scan is NOT part of this gate: it is still PowerShell only. "
-        "Run scripts/Invoke-Tests.ps1 for it."
-    )
+    if "secrets" not in arguments.skip:
+        check_secrets(failures, arguments.require_deny_terms)
 
     if failures:
         print("\nQuality gate failed:", file=sys.stderr)

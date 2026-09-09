@@ -221,6 +221,10 @@ if ($Skip -notcontains 'Pester') {
 # --- 4. Sensitive data gate ------------------------------------------------
 
 if ($Skip -notcontains 'Secrets') {
+    # Ported to scripts/check_sensitive_data.py, and both gates now run it. They agree
+    # on this tree: 102 files scanned, 38 skipped as ignored, no findings. This one goes
+    # when the PowerShell implementation does - see docs/process/port-status.md, which
+    # required the port to come FIRST so the removal could not quietly drop a check.
     Write-TestLog 'Running the sensitive data gate...'
     if ($RequireDenyTerms) {
         & (Join-Path $PSScriptRoot 'Test-NoSensitiveData.ps1') -RequireTermsFile
