@@ -18,6 +18,8 @@
 *.psd1 text eol=lf
 *.json text eol=lf
 *.md   text eol=lf
+*.py   text eol=lf
+*.toml text eol=lf
 *.xml  text eol=lf
 
 # Fixtures are compared byte for byte by the tests, so their endings are pinned.

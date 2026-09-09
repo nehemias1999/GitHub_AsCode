@@ -42,7 +42,12 @@ test rather than by trust.
 
 A change is not done until all seven hold:
 
-1. `.\scripts\Invoke-Tests.ps1` passes - including zero PSScriptAnalyzer **warnings**.
+1. **Both gates pass.** `.\scripts\Invoke-Tests.ps1` - including zero PSScriptAnalyzer
+   **warnings** - and `python scripts/run_tests.py`. There are two for as long as there
+   are two implementations: ADR 0006 keeps the PowerShell alive as the only oracle until
+   parity is proven, and every pull request leaves both green. A change that touches only
+   one half still runs both, because "it did not touch that" is the claim the gate exists
+   to check.
 2. Every new or changed behaviour has a test **named after the failure it prevents**.
 3. Every fixture is invented: `EXAMPLE-owner`, `EXAMPLE-repo`, `example.com`.
 4. `validate` still passes offline, with no network and no token, for every automation.

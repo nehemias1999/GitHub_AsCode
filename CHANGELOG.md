@@ -12,6 +12,35 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **The Python scaffolding, and the guards that come before any ported code.** `pyproject.toml`
+  declaring `dependencies = []`, the `github_as_code` package under `src/`, and
+  `scripts/run_tests.py` - the Python gate, with the same shape as the PowerShell one:
+  parse, lint, tests, in increasing order of cost, every failure adding a line rather
+  than stopping the run, and a missing linter or an empty test discovery counting as a
+  failure rather than a skip. It says on every run that the sensitive data scan is not
+  part of it, because a green line that covers less than the other gate must not look
+  like one that covers the same.
+- **Three guards for "no dependency beyond the standard library and git"**, because the
+  rule needed teeth once pip was in play: the manifest declares none, no import under
+  `src/` resolves outside `sys.stdlib_module_names`, and the package imports under
+  `python -I -S` with no `site-packages` at all. Each fails when it finds nothing to
+  read, rather than passing over an empty tree - which is the failure mode this
+  repository has already been bitten by once, in a sibling project whose CI had never
+  produced a job at all.
+- **A guard for "dependencies point downward, never sideways."** The sentence has been in
+  `docs/reference/architecture.md` since phase 1 with nothing enforcing it; Python imports
+  are statically enumerable, so it is now read from a ladder in `pyproject.toml`. A module
+  with no layer fails, and so does a layer naming a module that no longer exists.
+- The import reader both guards are built on has its own tests, named after the spellings
+  that hid something. The first version missed `from package import module` - the ordinary
+  way somebody writes exactly the import the layer guard exists to catch - and a planted
+  pair of modules at the same layer passed in silence. Found by planting the failure, not
+  by reading the code.
+- A `python-gate` CI job over `ubuntu-latest` and `windows-latest` on Python 3.11 and 3.14,
+  beside the two existing PowerShell legs. The 3.11 leg is the only thing enforcing the
+  declared floor: `PSUseCompatibleSyntax` checked it statically on every machine, and
+  Python has no equivalent.
+
 - **ADR 0006 - Python, and nothing but its standard library.** Records the decision to
   rewrite this tool in Python so it runs on Linux CI agents, in containers and on a Linux
   workstation, and restates the "no dependency beyond the interpreter and git" rule in the
@@ -29,6 +58,15 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- `AGENTS.md` - "finished" now means **both** gates pass, for as long as both
+  implementations exist.
+- `docs/process/testing-strategy.md` - records the two gates and the bounded window they
+  live in, what the Python gate checks and what it cannot, and the loss of
+  `PSUseCompatibleSyntax` as a real downgrade rather than an even trade.
+- `docs/reference/architecture.md` - the layer diagram gains the four edges the module
+  manifests always declared and it never drew: `Report` on `Plan` and `Configuration`,
+  `GitHub.Rest` on `Configuration`, `GitHub.Repository` on `Plan`. A guard that
+  contradicted the diagram would be worse than either alone.
 - `docs/adr/0004-fine-grained-tokens-only.md` carries a status note saying which of its
   supporting arguments ADR 0006 supersedes. The body is untouched: an ADR records what was
   decided and why at the time, and editing it would erase the reasoning rather than update
