@@ -6,16 +6,16 @@
 # as text, and a fixture whose endings change between checkouts makes a test pass on
 # one machine and fail on another for a reason nothing in the diff shows.
 #
+# It matters for the declaration too. The report's declarationFingerprint hashes the
+# file with its newlines normalised, precisely so a CRLF checkout and an LF one produce
+# the same fingerprint - but that normalisation is a safety net, and pinning the endings
+# is what keeps it from being load bearing.
+#
 # (The ported version of this file justified itself by citing Get-TextFingerprint and
-# a Jenkinsfile read from a commit. Neither exists here - that function lives in
-# Scm.Git, which this repository does not port - so the reason has been replaced with
-# one that is true of this codebase.)
+# a Jenkinsfile read from a commit. Neither exists here, so the reason was replaced with
+# one that is true of this codebase - and replaced again when the PowerShell went.)
 * text=auto eol=lf
 
-# PowerShell reads these fine with either ending; LF keeps diffs clean.
-*.ps1  text eol=lf
-*.psm1 text eol=lf
-*.psd1 text eol=lf
 *.json text eol=lf
 *.md   text eol=lf
 *.py   text eol=lf

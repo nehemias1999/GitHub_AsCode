@@ -8,32 +8,31 @@ practical version.
 
 ## Setup
 
-```powershell
-.\scripts\bootstrap.ps1
+```bash
+python scripts/bootstrap.py
 
-Install-Module Pester -MinimumVersion 5.5 -MaximumVersion 5.99.99 -Scope CurrentUser
-Install-Module PSScriptAnalyzer -Scope CurrentUser
+python -m pip install "ruff>=0.6.0,<1.0.0" "jsonschema>=4.0.0,<5.0.0"
 ```
 
-The upper bound on Pester is deliberate - see the note in
+The upper bound on ruff is deliberate - see the note in
 [docs/guides/getting-started.md](docs/guides/getting-started.md).
 
 ## The one command
 
-```powershell
-.\scripts\Invoke-Tests.ps1
+```bash
+python scripts/run_tests.py
 ```
 
-Parse check, PSScriptAnalyzer, Pester, sensitive data scan. CI runs exactly this, so
+Parse check, ruff, the suite, sensitive data scan. CI runs exactly this, so
 there is no second definition of "pass". **Warnings fail**, because
-`PSScriptAnalyzerSettings.psd1` declares `Severity = @('Error','Warning')` - and because
+`pyproject.toml` excludes no lint rule - and because
 `PSUseCompatibleSyntax` emits Warning, so ignoring warnings would mean nothing enforces
 the declared 5.1 and 7.0 support floor.
 
 Narrow it while iterating:
 
-```powershell
-.\scripts\Invoke-Tests.ps1 -Skip Analyzer -Path tests/foundation
+```bash
+python scripts/run_tests.py -Skip Analyzer -Path tests/foundation
 ```
 
 ## Adding an automation
@@ -49,7 +48,7 @@ matters:
 3. Register it in `foundation/config/project-context.json`.
 4. Add its active configuration file name to `.gitignore`.
 5. Write the guide, **including a rollback section**, and link it from `docs/README.md`.
-6. Add a row to `$script:Automation` in `tests/automations/Automations.Tests.ps1`.
+6. Give the module a layer in `[tool.github-as-code.layers]`, or the guard fails.
 7. Add a `CHANGELOG.md` entry.
 
 ## Writing tests

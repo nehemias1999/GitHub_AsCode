@@ -5,16 +5,21 @@
 # the exclusion delegated to nothing - which is the "folklore" the same file warns
 # about two comments earlier.
 #
-# It is not only style. tests/automations/SensitiveDataGate.Tests.ps1 extracts a
-# function from scripts/Test-NoSensitiveData.ps1 with the regular expression
-# (?ms)^function Get-GitIgnoredPath \{.*?^\}, so a closing brace that stops being in
-# column 0 breaks it with "Could not extract" rather than with an assertion failure -
-# a failure that names the wrong thing and sends the reader to the wrong file.
+# The reason this file used to give is gone, and saying so is better than leaving a
+# citation that no longer resolves.
 #
-# The ported version of this comment named two suites; the second, PipelineDrift,
-# does not exist in this repository. The constraint is still real, so the citation is
-# corrected rather than removed: a rule with no demonstrable reason is the first one
-# somebody tidies away.
+# It read: tests/automations/SensitiveDataGate.Tests.ps1 extracts a function from
+# scripts/Test-NoSensitiveData.ps1 with a regular expression anchored on a closing brace
+# in column 0, so an indented brace broke it with "Could not extract" - a failure that
+# names the wrong thing. Both files went with the PowerShell implementation, and the
+# Python gate is imported rather than scraped, so that particular constraint no longer
+# binds anything.
+#
+# What remains is ordinary and worth keeping: consistent layout, LF endings, and an
+# indent width the linter agrees with. This repository has twice found a config file
+# justifying itself by citing something that does not exist - AGENTS.md section 7 - so
+# the honest note replaces the stale one rather than the rule quietly losing its
+# reason.
 
 root = true
 
@@ -24,6 +29,10 @@ end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
 indent_style = space
+indent_size = 4
+
+[*.py]
+# ruff's default, and what the line-length rule in pyproject.toml is calibrated for.
 indent_size = 4
 
 [*.{json,yml,yaml}]

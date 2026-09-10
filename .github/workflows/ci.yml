@@ -1,15 +1,12 @@
 # The quality gate, run automatically.
 #
-# It runs the repository's own runners rather than reimplementing the checks. A second
-# definition of "pass" is the thing being avoided: four documents claim that CI runs
+# It runs the repository's own runner rather than reimplementing the checks. A second
+# definition of "pass" is the thing being avoided: several documents claim that CI runs
 # the same command a person runs locally, and this is what makes those sentences true.
 #
-# There are two gates, and two jobs, for as long as there are two implementations.
-# ADR 0006 keeps the PowerShell alive as the only oracle until parity is proven, and
-# the PowerShell gate cannot serve the Python half: it needs PowerShell, and requiring
-# PowerShell on a Linux agent to test a tool whose point is running there without it
-# would be an odd thing to write down. Every pull request leaves both green. When the
-# PowerShell implementation is deleted, the `gate` job goes with it.
+# There was a second job here until the port finished, running the PowerShell gate as
+# the oracle the Python half was compared against. It went with the implementation it
+# tested - see docs/process/port-status.md for the evidence that allowed it.
 name: quality gate
 
 on:
@@ -24,118 +21,6 @@ permissions:
   contents: read
 
 jobs:
-  gate:
-    runs-on: windows-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        # Both engines, because the declared support floor is Windows PowerShell 5.1
-        # and the code carries real 5.1-specific workarounds: the reduced schema
-        # validator, ConvertTo-Json depth, and several places that handle an empty
-        # array unwrapping to $null.
-        #
-        # This matrix is often the ONLY place PowerShell 7 gets exercised: a Windows
-        # development machine may ship 5.1 and nothing else, in which case a local run
-        # tests the floor alone. Removing pwsh here would leave half the declared
-        # support completely unexercised. See docs/process/testing-strategy.md.
-        shell: [powershell, pwsh]
-    name: ${{ matrix.shell }}
-
-    # The shell is a job-level DEFAULT, not a per-step setting, and that is the whole
-    # reason this workflow runs at all.
-    #
-    # As ported from the read-only sibling project, this file set
-    # `shell: ${{ matrix.shell }}` on each step. GitHub validates a step's `shell` when
-    # it parses the workflow, before any
-    # expression is evaluated, so an expression there is not a shell name and the run
-    # fails at startup - in zero seconds, with no job, and with the run labelled by its
-    # file path instead of its name.
-    #
-    # That is why the project this was ported from had never had a green CI run: every
-    # one of its runs failed this way, while four of its documents claimed the gate ran
-    # automatically. A startup failure produces no job and no log, so it looks like
-    # nothing rather than like a failure, which is how it went unnoticed.
-    #
-    # `defaults.run.shell` is evaluated later and does accept the matrix context.
-    # Verified empirically rather than assumed: the powershell leg reports
-    # `engine=Desktop`, the pwsh leg `engine=Core`. Both engines really are exercised,
-    # which is the only reason the matrix is worth having.
-    defaults:
-      run:
-        shell: ${{ matrix.shell }}
-    steps:
-      # Pinned to a commit, not a tag. A tag is mutable: whoever controls the
-      # repository can move v4 to different code, and this workflow runs on every pull
-      # request. actions/checkout is a first-party action, so the risk is small - but a
-      # template that spends a page arguing for the least-privileged possible token
-      # should not then trust a moving reference.
-      #
-      # The tag stays in the comment, because a bare SHA is unreviewable: nobody can
-      # tell from 11d5960 whether it is ahead of or behind the version they expect.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-
-      - name: Install the test-only dependencies
-        run: |
-          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-          # Upper bound deliberate. Pester 6 has shipped, and -MinimumVersion alone
-          # would install it - running the suite on an untested major while reporting
-          # the result as if it were tested. Invoke-Tests.ps1 falls back to a newer
-          # major with a warning if it has to; CI should not have to.
-          Install-Module Pester -MinimumVersion 5.5 -MaximumVersion 5.99.99 -Scope CurrentUser -Force -SkipPublisherCheck
-          # Bounded, for the same reason Pester is on the line above - and the
-          # inconsistency was the finding: Pester carried a carefully written
-          # justification for its upper bound while PSScriptAnalyzer, installed two
-          # lines later, took whatever PSGallery had that morning.
-          #
-          # It matters more here than it would elsewhere, because
-          # PSScriptAnalyzerSettings.psd1 deliberately excludes nothing. Any rule a new
-          # major adds fires immediately and fails the gate on code that did not
-          # change - which is a build that breaks on a day nobody committed.
-          Install-Module PSScriptAnalyzer -MinimumVersion 1.21 -MaximumVersion 1.99.99 -Scope CurrentUser -Force
-
-      - name: Seed the deny-term layer of the secret gate
-        env:
-          SENSITIVE_TERMS: ${{ secrets.SENSITIVE_TERMS }}
-        run: |
-          # The gate has two layers, and the second reads .local/sensitive-terms.txt,
-          # which is excluded from version control - so it can never simply be present
-          # here. Terms are themselves sensitive, hence a secret rather than a
-          # committed file. Optional on purpose: a fork with no secret still runs the
-          # structural layer, and the gate says which layers answered rather than
-          # reporting an unqualified pass.
-          New-Item -ItemType Directory -Force -Path .local | Out-Null
-          if ($env:SENSITIVE_TERMS) {
-            [System.IO.File]::WriteAllText("$PWD/.local/sensitive-terms.txt", $env:SENSITIVE_TERMS)
-            Write-Output 'Deny-term layer seeded from the SENSITIVE_TERMS secret.'
-            Add-Content -Path $env:GITHUB_ENV -Value 'REQUIRE_DENY_TERMS=1'
-          }
-          else {
-            Write-Output 'No SENSITIVE_TERMS secret set: the gate will run its structural rules only, and will say so.'
-          }
-
-      - name: Run the quality gate
-        run: |
-          # One command, the same one a person runs locally.
-          if ($env:REQUIRE_DENY_TERMS) {
-            ./scripts/Invoke-Tests.ps1 -RequireDenyTerms
-          }
-          else {
-            ./scripts/Invoke-Tests.ps1
-          }
-
-      - name: Prove the automation still validates offline
-        run: |
-          # validate needs no network and no credential, so it is the one end-to-end
-          # path that can run here. It also proves the shipped template parses under
-          # this engine, which is where the reduced 5.1 schema validator differs from
-          # Test-Json on 7.
-          #
-          # There is deliberately no step that contacts the API. Every command past
-          # validate needs a token, and a token in CI would be a credential with
-          # account-wide read access sitting in an environment that runs code from
-          # pull requests.
-          ./automations/repo-inventory/Invoke-RepositoryInventory.ps1 -Command validate -ConfigurationPath ./automations/repo-inventory/config/repositories.example.json
-
   python-gate:
     strategy:
       fail-fast: false

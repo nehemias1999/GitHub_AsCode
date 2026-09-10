@@ -1,35 +1,35 @@
-# Where the port is, and what deleting the PowerShell needs
+# How the port ran, and what it found
 
-**Purpose.** Say which implementation does what today, and give the exact procedure for
-the one step that cannot be done from a keyboard alone.
+**Purpose.** Record how the port was carried out, what the evidence was, and what it
+found - so a later reader can tell a decision from an accident.
 
 **Scope.** The transition [ADR 0006](../adr/0006-python-and-the-standard-library.md)
 describes.
 
-**Audience.** Whoever runs the evidence, and whoever reviews the pull request that
-removes 7,700 lines.
+**Audience.** Anyone wondering why something is the way it is, and anyone about to port
+something else.
 
-## Both implementations are complete and both are green
+## The two implementations, while there were two
 
 | | PowerShell | Python |
 | --- | --- | --- |
-| Transport | `GitHubAsCode.Http` | `github_as_code.http` |
-| Configuration | `GitHubAsCode.Configuration` | `github_as_code.configuration` |
+| Transport | `github_as_code.http` | `github_as_code.http` |
+| Configuration | `github_as_code.configuration` | `github_as_code.configuration` |
 | Schema validation | reduced engine or `Test-Json -Schema` | `github_as_code.schema`, one engine |
-| Plan model | `GitHubAsCode.Plan` | `github_as_code.plan` |
-| Evidence | `GitHubAsCode.Report` | `github_as_code.report` |
-| Protocol | `GitHub.Rest` | `github_as_code.rest` |
-| Domain | `GitHub.Repository` | `github_as_code.repository` |
-| Entry point | `Invoke-RepositoryInventory.ps1` | `automations/repo-inventory/inventory.py` |
-| Gate | `scripts/Invoke-Tests.ps1` | `scripts/run_tests.py` |
-| Secret scan | `scripts/Test-NoSensitiveData.ps1` | `scripts/check_sensitive_data.py` |
+| Plan model | `github_as_code.plan` | `github_as_code.plan` |
+| Evidence | `github_as_code.report` | `github_as_code.report` |
+| Protocol | `github_as_code.rest` | `github_as_code.rest` |
+| Domain | `github_as_code.repository` | `github_as_code.repository` |
+| Entry point | `inventory.py` | `automations/repo-inventory/inventory.py` |
+| Gate | `scripts/run_tests.py` | `scripts/run_tests.py` |
+| Secret scan | `scripts/check_sensitive_data.py` | `scripts/check_sensitive_data.py` |
 
-Every pull request leaves both green, on `windows-latest` for the two PowerShell engines
-and on `ubuntu-latest` and `windows-latest` for Python 3.11 and 3.14.
+Every pull request left both green until the removal landed. **The PowerShell
+implementation was the oracle**: it is what "does the port produce the same answers?"
+was answered against, and deleting it before that question was answered would have made
+it unanswerable. That is the whole reason two were carried at all.
 
-**The PowerShell implementation is the oracle.** It is what "does the port produce the
-same answers?" is answered against, and deleting it before that question is answered
-makes it unanswerable. That is the whole reason for the cost of carrying two.
+The right-hand column is what remains.
 
 ## The evidence has been produced
 
@@ -96,9 +96,8 @@ From ADR 0006, in the order it must be checked:
    anything.
 3. The dual gate green on `ubuntu-latest` and `windows-latest`.
 
-Points 1 and 3 are what CI already does. Point 2 needs a token and a live account; it has
-been run once, and the result is above. Run it again before the removal lands if the
-account or the declaration has changed since.
+Points 1 and 3 were what CI did on every pull request. Point 2 needed a token and a live
+account, and the result is above.
 
 ## Producing the evidence
 
@@ -107,8 +106,8 @@ between them: the fingerprint is what proves you did not.
 
 ```powershell
 # 1. PowerShell, both rungs.
-.\automations\repo-inventory\Invoke-RepositoryInventory.ps1 -Command inventory -ReportPath artifacts\parity\ps-inventory.json
-.\automations\repo-inventory\Invoke-RepositoryInventory.ps1 -Command plan      -ReportPath artifacts\parity\ps-plan.json
+python automations/repo-inventory/inventory.py inventory -ReportPath artifacts\parity\ps-inventory.json
+python automations/repo-inventory/inventory.py plan      -ReportPath artifacts\parity\ps-plan.json
 
 # 2. Python, the same two.
 python automations/repo-inventory/inventory.py inventory --report-path artifacts/parity/py-inventory.json
@@ -137,20 +136,41 @@ what ADR 0006 asks for.
 Once the evidence is in hand:
 
 - delete `foundation/`, `tests/foundation/`, `tests/automations/`, `tests/TestHelpers.ps1`,
-  `scripts/Invoke-Tests.ps1`, `scripts/Test-NoSensitiveData.ps1`, `scripts/bootstrap.ps1`,
-  `PSScriptAnalyzerSettings.psd1` and `Invoke-RepositoryInventory.ps1`;
+  `scripts/run_tests.py`, `scripts/check_sensitive_data.py`, `scripts/bootstrap.py`,
+  `PSScriptAnalyzerSettings.psd1` and `inventory.py`;
 - ~~port the sensitive data gate first~~ **done.** `scripts/check_sensitive_data.py`
   runs in the Python gate, and the two agree on this tree: 102 files scanned, 38 skipped
   as ignored, no findings. That was the one ordering constraint, and it is satisfied;
 - drop the `gate` job from `.github/workflows/ci.yml`;
-- rewrite, rather than remove, the `ConvertTo-Json` row in
-  [github-notes.md](../reference/github-notes.md). That document is the ledger of why each
-  guard exists, and an entry deleted without trace loses the reason;
-- record the evidence in `CHANGELOG.md`.
+- the `ConvertTo-Json` row in [github-notes.md](../reference/github-notes.md) was
+  rewritten rather than removed. That document is the ledger of why each guard exists,
+  and an entry deleted without trace loses the reason;
+- `.editorconfig` lost the reason it gave for its closing-brace rule, and says so. The
+  rule cited a Pester test extracting a function with a regular expression; both are
+  gone. A configuration file justifying itself by citing something that does not exist is
+  a failure this repository has already had twice, so the stale citation was replaced by
+  an honest note rather than left to rot;
+- the evidence is recorded in `CHANGELOG.md`.
 
-## Two implementations is not a maintenance model
+## Two implementations was not a maintenance model
 
-It is a bounded window, and the argument against it is already written in the code being
-replaced: a retry policy implemented twice is a retry policy that drifts. The longer both
-live, the more likely a fix lands in one and not the other - so the evidence is worth
-running sooner rather than at leisure.
+It was a bounded window, and the argument against it was written in the code being
+replaced: a retry policy implemented twice is a retry policy that drifts. The window ran
+from the first scaffolding commit to the removal, and every pull request in it left both
+green.
+
+## What to read before porting something else
+
+The four findings that were not in anybody's plan, in the order they were found:
+
+1. `urllib` forwards `Authorization` across a cross-host redirect. Proved with two
+   servers rather than asserted, and the proof includes showing the stock opener does it.
+2. The reduced schema validator was not checking nine of the keywords the shipped schemas
+   use. Measured by running the same declaration through both.
+3. `Sort-Object` orders by the machine's culture, so the oracle did not agree with
+   itself across machines. Found only because the parity comparison failed.
+4. Three sets of guards in the suite being deleted had nothing to do with the thing being
+   deleted.
+
+Every one of them was found by **running something and comparing**, not by reading the
+code carefully. That is the method worth carrying to the next port.

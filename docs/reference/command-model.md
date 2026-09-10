@@ -29,7 +29,7 @@ meaning. One command, one intent.
 
 ## Two axes, not one
 
-Defined in `foundation/modules/GitHubAsCode.Plan/GitHubAsCode.Plan.psm1`, and reused
+Defined in `src/github_as_code/plan.py`, and reused
 verbatim from the sibling projects rather than reinvented. Confusing the two axes is the
 easiest mistake to make here, so they are stated separately.
 
@@ -80,7 +80,7 @@ twice, and nothing else it reports can be trusted.
 
 `pending` on its own is not reviewable. Every operation carries a reason written for the
 person approving the plan, not for a log parser - which is why
-`Get-GitHubRepositoryStatus` names the fields that differ rather than emitting a count.
+`repository_status` names the fields that differ rather than emitting a count.
 
 ## Exit codes
 

@@ -18,12 +18,12 @@ platform. It is not specific to GitHub either.
 | 1 | A complete configuration **template**, versioned, plus the active file name it is renamed to. |
 | 2 | The active file **excluded from version control** - created by *renaming* the template, never by copying its contents. |
 | 3 | An isolated **JSON Schema**, validated at run time. Not documentation. |
-| 4 | A single **entry point** `Invoke-<Module>.ps1` exposing at least `validate` and `plan`. |
+| 4 | A single **entry point**, `automations/<module>/<name>.py`, exposing at least `validate` and `plan`. |
 | 5 | A **guide** covering purpose, configuration, commands, permissions, output and **rollback**. |
 | 6 | **Tests** using fixtures that contain no real data. |
 | 7 | Its own **workflow definition**, only if it runs from GitHub Actions. |
 
-Items 1 to 6 are enforced by `tests/automations/Automations.Tests.ps1`. A contract
+Items 1 to 6 are enforced by the suite under `tests/python/`. A contract
 nothing checks is a wish.
 
 ## Item by item
@@ -50,14 +50,14 @@ it.
 ### 3 - a schema that runs
 
 Every configuration file points at its schema with a relative `$schema` property, and
-`Get-GitHubAsCodeConfiguration` resolves it and validates before returning.
+`load_configuration` resolves it and validates before returning.
 
 Shipping a schema and never running it is common and worthless: the schema documents an
 intention while the loader accepts anything, and the two drift apart with nobody
 noticing. Here `validate` actually validates, **offline**, so a malformed declaration
 fails in a second instead of halfway through a run.
 
-On PowerShell 5.1 there is no `Test-Json -Schema`, so a reduced validator runs. The
+There is one validator, and a guard keeps it complete against the keywords the schemas actually use - see [ADR 0007](../adr/0007-one-schema-validator.md). The
 result **names the engine that ran**, so a report never claims more coverage than it
 had - the reduced engine ignores `pattern`, `minimum`, `minItems` and the `oneOf`
 family.
@@ -65,7 +65,7 @@ family.
 What a schema cannot express goes in the entry point's `validate` section: a
 cross-reference between two parts of one document (a repository's `class` must be a key
 of `classes`), and anything needing a function the schema has no access to (a topic
-must survive `Format-GitHubTopicName`).
+must survive `format_topic_name`).
 
 ### 4 - one entry point
 
