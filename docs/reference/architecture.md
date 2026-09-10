@@ -25,13 +25,13 @@ diagram keeps quietly.
 flowchart TD
     subgraph entry [automations - one directory per resource family]
         RI[repo-inventory]
-        RS["repo-standards (phase 2)"]
+        RS[repo-standards]
         RM["repo-metadata (phase 3)"]
         PB["project-board (phase 5)"]
     end
     subgraph domain [foundation - domain modules]
         REPO[github_as_code.repository]
-        CONT["github_as_code.content (phase 2)"]
+        CONT[github_as_code.content]
         PROJ["github_as_code.projects (phase 5)"]
     end
     subgraph client [foundation - protocol clients]
@@ -52,6 +52,9 @@ flowchart TD
     RI --> PL
     RI --> RP
     RI --> CF
+    RS --> PL
+    RS --> RP
+    RS --> CF
     REPO --> REST
     REPO --> PL
     CONT --> REST
@@ -69,7 +72,7 @@ flowchart TD
 | --- | --- |
 | `GitHubAsCode.*` | Cross-cutting. **Knows nothing about GitHub.** No URL, no endpoint, no permission name, no status code meaning. |
 | `github_as_code.rest` / `github_as_code.graphql` | Protocol semantics: how a request is addressed, how a page is followed, how a failure is recognised. |
-| `github_as_code.repository` / `.Content` / `.Projects` | Domain rules, as pure functions over values. No network. |
+| `github_as_code.repository` / `.content` / `.projects` | Domain rules, as pure functions over values. No network. |
 | `automations/*` | Orchestration and reporting. Reuses the foundation; adds nothing domain-specific to it. |
 
 The moment the shared layer grows an `if this is a repository` branch, it has become a

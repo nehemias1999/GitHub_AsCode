@@ -139,7 +139,7 @@ The phases the documentation refers to:
 | Phase | Automation | Writes |
 | --- | --- | --- |
 | 1 | `repo-inventory` | No — this is what you have |
-| 2 | `repo-standards`, read-only | No |
+| 2 | `repo-standards`, read-only | No — this is what you have |
 | 3 | `repo-metadata` | **Yes** — the first writer, and the ADR 0001 boundary change |
 | 4 | `repo-standards apply`, `repo-protection` | Create-only / never |
 | 5 | `project-board` | Additive, over GraphQL |

@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "repo-standards declaration",
+  "description": "What a repository of each class is required to contain. The repository-to-class mapping is NOT here: it is declared once, in the repo-inventory declaration, because a mapping written in two files is a mapping that drifts. No secret and no token appears in this file.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "classes"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "_readme": {
+      "type": "string",
+      "description": "Free text carried by the template. Ignored by the loader."
+    },
+    "classes": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "One entry per class named in the repo-inventory declaration. A class with an empty requiredFiles list is a decision - 'this class requires no files' - rather than an omission, and the plan reports it as ok.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "description",
+          "requiredFiles"
+        ],
+        "properties": {
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "requiredFiles": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255,
+                  "pattern": "^[A-Za-z0-9._-][A-Za-z0-9._/-]*$",
+                  "description": "Path relative to the repository root, with forward slashes. No leading slash and no relative segment: the path becomes a URL segment, and the URL builder escapes the query rather than the path."
+                },
+                "reason": {
+                  "type": "string",
+                  "maxLength": 200,
+                  "description": "Why this file is required. It is printed in the plan, so an approver reads the reason rather than only the path."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

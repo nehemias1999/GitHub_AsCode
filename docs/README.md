@@ -11,6 +11,7 @@ Routed by need, not by folder.
 | Know what it refuses to do, and why | [scope-and-limits.md](overview/scope-and-limits.md) |
 | **Fix something that went wrong** | [troubleshooting.md](guides/troubleshooting.md) |
 | Inventory the account | [repo-inventory guide](../automations/repo-inventory/README.md) |
+| See which files repositories are missing | [repo-standards guide](../automations/repo-standards/README.md) |
 | Understand the layers | [architecture.md](reference/architecture.md) |
 | Understand the verbs and statuses | [command-model.md](reference/command-model.md) |
 | Add an automation | [automation-contract.md](reference/automation-contract.md) |

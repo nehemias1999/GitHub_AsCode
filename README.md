@@ -68,11 +68,12 @@ documentation.
 flowchart TD
     subgraph entry [automations - one per resource family]
         RI[repo-inventory]
-        RS["repo-standards (phase 2)"]
+        RS[repo-standards]
         RM["repo-metadata (phase 3)"]
     end
     subgraph domain [foundation - domain modules]
         REPO[github_as_code.repository]
+        CONT[github_as_code.content]
     end
     subgraph client [foundation - protocol clients]
         REST[github_as_code.rest]
@@ -86,10 +87,15 @@ flowchart TD
     HTTP["github_as_code.http - the only Invoke-WebRequest"]
 
     RI --> REPO
+    RS --> CONT
     RI --> PL
     RI --> RP
     RI --> CF
+    RS --> PL
+    RS --> RP
+    RS --> CF
     REPO --> REST
+    CONT --> REST
     REST --> HTTP
     GQL --> HTTP
 ```
@@ -107,10 +113,16 @@ See [docs/reference/architecture.md](docs/reference/architecture.md) and
 | Module | Owns | Guide |
 | --- | --- | --- |
 | `repo-inventory` | Every repository the account owns, and how live state differs from the declaration | [guide](automations/repo-inventory/README.md) |
+| `repo-standards` | Which files a repository of each class must have, and which are missing | [guide](automations/repo-standards/README.md) |
 
-Phases 2 to 5 add `repo-standards` (the files a repository of each class must have),
-`repo-metadata` (description, homepage, topics, labels), `repo-protection` (**plan-only,
-permanently**) and `project-board` (Projects v2, over GraphQL).
+`repo-standards` reports; it does not create. Which class a repository is in is declared
+**once**, in the `repo-inventory` declaration, and read from there - two files that must
+agree about that are two files that drift, and the drift would be silent.
+
+Phases 3 to 5 add `repo-metadata` (description, homepage, topics, labels),
+`repo-protection` (**plan-only, permanently**) and `project-board` (Projects v2, over
+GraphQL). Phase 4 adds `repo-standards apply`, which creates a missing file and never
+overwrites or removes one.
 
 Every module exposes the same ladder:
 

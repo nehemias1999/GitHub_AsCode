@@ -2,7 +2,7 @@
 
 **Purpose.** Get from a fresh clone to a plan that reports zero pending.
 
-**Scope.** Phase 1 - `repo-inventory`.
+**Scope.** Phases 1 and 2 - `repo-inventory`, then `repo-standards`.
 
 **Audience.** Anyone running this for the first time.
 
@@ -88,7 +88,7 @@ which is the exact failure this automation exists to prevent. Cross-check it:
 gh repo list your-login --limit 200 | wc -l
 ```
 
-The report lands under `artifacts/repo-inventory/`, as JSON and as Markdown.
+The report lands under `artifacts/reports/`, as JSON and as a Markdown sibling.
 
 ## 6. Derive the declaration from the report
 
@@ -129,7 +129,38 @@ what makes any later finding believable: it proves the inventory and the compari
 agree. If the two runs differ over an unchanged account, the difference is not on
 GitHub.
 
-## 8. Run the gate before committing anything
+## 8. See which files your repositories are missing
+
+`repo-standards` is the second automation, and it reads only.
+
+```bash
+mv automations/repo-standards/config/standards.example.json \
+   automations/repo-standards/config/standards.json
+python automations/repo-standards/standards.py validate
+```
+
+`validate` needs no network and no token, and it is where the one coupling of this phase
+is checked: which class a repository is in is **not** declared here, it is read from the
+`repo-inventory` declaration you wrote in step 6. So every class you used there must have
+a standard here, and `validate` names the ones that do not. Add them - an empty
+`requiredFiles` is a legitimate answer, and it is exactly what `archived` declares.
+
+Then plan:
+
+```bash
+python automations/repo-standards/standards.py plan
+```
+
+**Read `finding.unreadableCount` in the report first.** If it is not zero, the token is
+short `Contents: read` and the file verdicts below it are absent rather than wrong - a 404
+from GitHub means either "no such file" or "this token cannot see it", so the run reports
+`blocked` instead of guessing. Then read `finding.missingByPath`: the file missing from the
+most repositories is the one to decide about first, and it is usually a licence.
+
+Nothing here creates a file. Phase 4 would add `repo-standards apply`, behind its own
+confirmation, and it would create files and never overwrite or remove one.
+
+## 9. Run the gate before committing anything
 
 ```bash
 python scripts/run_tests.py

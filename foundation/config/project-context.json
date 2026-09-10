@@ -30,6 +30,10 @@
     "repo-inventory": {
       "configuration": "automations/repo-inventory/config/repositories.json",
       "template": "automations/repo-inventory/config/repositories.example.json"
+    },
+    "repo-standards": {
+      "configuration": "automations/repo-standards/config/standards.json",
+      "template": "automations/repo-standards/config/standards.example.json"
     }
   }
 }
