@@ -17,8 +17,8 @@ Each rung does everything the one above it does, and more.
 | `inventory` | Yes | No | - | Yes |
 | `plan` | Yes | No | - | Yes |
 | `smoke` | Yes | No | - | Yes |
-| `apply` | Yes | **Yes** | `-ConfirmApply` | Phase 3 |
-| `reconcile` | Yes | **Yes** | `-ConfirmApply -ConfirmReconcile` | Perhaps never |
+| `apply` | Yes | **Yes** | `--confirm-apply` | Phase 3 |
+| `reconcile` | Yes | **Yes** | `--confirm-apply --confirm-reconcile` | Perhaps never |
 
 `validate` is offline and needs no token. That is a hard requirement rather than a
 convenience: it means a malformed declaration fails in a second, and it means CI can

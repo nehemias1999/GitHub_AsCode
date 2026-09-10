@@ -122,7 +122,7 @@ each problem. Usually one of:
   cannot express
 - a topic that is not storable: uppercase is fine and normalised, but `c#` or a space
   is rejected rather than mangled into a topic nobody chose
-- a `-RepositoryName` naming something not declared, which would silently narrow the
+- a `--repository-name` naming something not declared, which would silently narrow the
   run to nothing
 
 ## The gate fails on a lint finding

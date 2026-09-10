@@ -70,6 +70,6 @@ as `protected` rather than removed. See [ADR 0003](../adr/0003-additive-by-defau
 
 The one exception, if it is ever built, is `reconcile` on `repo-metadata` - the only
 operation that would remove a declared-away topic. It will require
-`-ConfirmApply -ConfirmReconcile`, and it will be absent from every workflow
+`--confirm-apply --confirm-reconcile`, and it will be absent from every workflow
 definition, for the same reason a rename is absent from the sibling projects' pipeline
 definitions: its blast radius is not bounded by the plan.

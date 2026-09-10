@@ -10,8 +10,9 @@ that reports zero pending.
 ## What you are getting
 
 A read-only inventory of a GitHub account, plus the scaffolding four more automations are
-meant to be built on. It **cannot write to GitHub** — `github_as_code.http` has no
-`-Method` parameter, and a test asserts the word appears nowhere in the repository.
+meant to be built on. It **cannot write to GitHub** — `github_as_code.http` is the only
+file that imports `urllib.request`, and a parse-tree test asserts no call anywhere passes
+a body and every `method=` is the literal `'GET'`.
 Widening that is [ADR 0001](../adr/0001-write-boundary.md), and it names the four files
 the change must touch together.
 
@@ -34,8 +35,8 @@ Six things carry a placeholder or somebody else's name. The genericity test
 | `CHANGELOG.md` | the `[0.1.0]` entry | It describes the template's own first release. Keep it as provenance, or replace it with your own first entry |
 | Repository description and topics | your new repository on GitHub | It has neither. Ironically, that is one of the findings this tool reports |
 
-Nothing else needs renaming. `GitHubAsCode.*` and `GitHub.*` are the product's module
-namespaces, not the author's.
+Nothing else needs renaming. `github_as_code.*` is the product's package name, not the
+author's.
 
 ## 2. Define your repository classes
 

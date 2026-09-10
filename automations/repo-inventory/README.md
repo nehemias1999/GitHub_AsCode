@@ -34,8 +34,8 @@ make - it produces the evidence, a person makes the call.
 | `smoke` | Yes | No | Yes, read-only |
 
 There is no `apply`, and no code path that could write:
-`github_as_code.http` has no `-Method` parameter, and an absence test asserts the word
-appears as neither a parameter nor a hashtable key anywhere in the repository.
+`github_as_code.http` is the only file that imports `urllib.request`, and an absence test
+asserts no call anywhere passes a body and every `method=` is the literal `'GET'`.
 
 ## Configuration
 

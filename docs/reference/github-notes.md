@@ -78,7 +78,7 @@ adopted it.
 | **The API** | The same endpoint that sets a description also sets `private`, `archived`, `is_template`, `name` and `default_branch`. |
 | **The obvious implementation** | A generic writer that PATCHes whatever the configuration hands it. |
 | **What it destroys** | `private` detaches the fork network and disables Pages, irreversibly in the sense that matters. `archived` makes every later write fail, including this tool's own. |
-| **Mitigation** | The absence test is **live now**: it asserts no hashtable anywhere in the repository has a key named `private`, `visibility`, `archived`, `is_template` or `default_branch`, which is the shape a request body takes. **Phase 3** adds the other two halves - a metadata schema with `additionalProperties: false` that omits those properties, and an allowlist in the writer. |
+| **Mitigation** | The absence test is **live now**: it asserts no dictionary anywhere in the repository has a key named `private`, `visibility`, `archived`, `is_template` or `default_branch`, which is the shape a request body takes. **Phase 3** adds the other two halves - a metadata schema with `additionalProperties: false` that omits those properties, and an allowlist in the writer. |
 
 ### 7. Deleting a label removes it from history
 

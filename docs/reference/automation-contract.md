@@ -121,12 +121,12 @@ every workflow, because it is not something to trigger from a form.
 1. Create `automations/<name>/` with `config/` and `schemas/`.
 2. Write the template and its schema **first**. The shape of the declaration is the
    design.
-3. Write the entry point. Reuse the foundation; add nothing GitHub-specific to
-   `GitHubAsCode.*`.
+3. Write the entry point. Reuse the foundation; add nothing GitHub-specific to the
+   cross-cutting modules.
 4. Register the module in `foundation/config/project-context.json`.
 5. Add its active configuration file name to `.gitignore`.
 6. Write the guide and link it from `docs/README.md`.
-7. Add a row to `$script:Automation` in the contract test.
+7. Add the name to `AUTOMATIONS` in `tests/python/test_automation_contract.py`.
 8. Add a `CHANGELOG.md` entry.
 
 Step 3 is where the pressure appears. If the shared layer seems to need a special case

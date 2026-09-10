@@ -266,6 +266,31 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **Fourteen documents still described the write boundary in PowerShell.** They said
+  `github_as_code.http` "has no `-Method` parameter" and that a test asserts the word
+  appears as neither a parameter nor a hashtable key - a claim about a language this
+  repository no longer contains, and a **weaker** claim than the guards actually make.
+  `test_write_boundary.py` was reshaped for Python when it was ported, because the write
+  vector is not the same one: `Request(url, data=...)` promotes a GET to a POST from the
+  presence of a body alone, with no method argument involved at all. So the guards assert
+  on the shape of the call - no body anywhere, every `method=` the literal `'GET'`, and
+  `urllib.request` imported by one file - and the documents now say that.
+
+  Along with it: `-ConfirmApply` / `-ConfirmReconcile` / `-RepositoryName` are written as
+  the POSIX flags they now are (`--repository-name` is a flag that exists today, so that
+  one was simply wrong); `GitHubAsCode.*` no longer names the cross-cutting layer;
+  `automation-contract.md` step 7 said to add a row to `$script:Automation`, and now names
+  `AUTOMATIONS` in `test_automation_contract.py` - the tuple this release actually
+  changed; the `Invoke-WebRequest` labels in both architecture diagrams read
+  `urllib.request`; `testing-strategy.md` no longer says the Pester suite shares the
+  fixtures, because there is no Pester suite; and the README's summary of the absence
+  tests no longer claims a `ConvertTo-Json` guard that was deliberately not ported.
+
+  The genuinely historical references are untouched - the ADRs, this changelog,
+  `port-status.md`, the `github-notes.md` ledger rows about PowerShell, and the comments
+  in `http.py` and `test_write_boundary.py` explaining why the guard set has the shape it
+  has. Those are the record of a decision; the rest were descriptions of the present that
+  had quietly stopped being true.
 - **`docs/guides/troubleshooting.md` named a directory that does not exist.** Its "where
   the evidence is" table pointed at `artifacts/repo-inventory/*.json`, while reports have
   been written to `artifacts/reports/` with the module and command in the file name since

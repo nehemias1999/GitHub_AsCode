@@ -10,9 +10,15 @@ from the code or from an aspiration in the README.
 ## What exists now
 
 Two automations - `repo-inventory` and `repo-standards` - and **neither can write**. Not
-"does not write by convention": `github_as_code.http` has no `-Method` parameter, and
-`tests/python/test_write_boundary.py` asserts from the parse tree that the word
-`Method` appears as neither a parameter nor a hashtable key anywhere in the repository.
+"does not write by convention": `github_as_code.http` is the only file that imports
+`urllib.request`, and `tests/python/test_write_boundary.py` walks the parse tree
+asserting that no call anywhere passes a body and that every `method=` is the literal
+`'GET'`.
+
+Both halves are needed because in Python a write does not look like one:
+`Request(url, data=...)` promotes a GET to a POST from the presence of the body alone,
+with no method argument involved at all - which is why the guards assert on the shape of
+the call rather than on the presence of a name.
 
 Both expose the same ladder, and `repo-standards` has no `apply` at all - not a disabled
 one, no such subcommand.

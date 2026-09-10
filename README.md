@@ -56,7 +56,7 @@ documentation.
 
 | Principle | In practice |
 | --- | --- |
-| **Declare, then plan, then apply** | `plan` writes nothing. `apply` does not exist yet, and when it does it will need `-ConfirmApply` and will refuse a plan with any blocked operation |
+| **Declare, then plan, then apply** | `plan` writes nothing. `apply` does not exist yet, and when it does it will need `--confirm-apply` and will refuse a plan with any blocked operation |
 | **Never delete** | Every writer is additive. A collection is written as the **union** of live and declared, and the undeclared members are reported as preserved rather than removed |
 | **Names, not values** | The configuration declares the *name* of the environment variable holding a secret - and of the one holding the account login - so the whole declaration is committable |
 | **Idempotent by design** | A change is done when a second `plan` reports nothing pending. Drift is defined against the *payload that would be sent*, not against the declaration, which is what makes a second run a genuine no-op |
@@ -84,7 +84,7 @@ flowchart TD
         PL[github_as_code.plan]
         RP[github_as_code.report]
     end
-    HTTP["github_as_code.http - the only Invoke-WebRequest"]
+    HTTP["github_as_code.http - the only urllib.request"]
 
     RI --> REPO
     RS --> CONT
@@ -132,12 +132,13 @@ Every module exposes the same ladder:
 | `inventory` | Yes | No | - | Yes |
 | `plan` | Yes | No | - | Yes |
 | `smoke` | Yes | No | - | Yes |
-| `apply` | Yes | **Yes** | `-ConfirmApply` | Phase 3 |
+| `apply` | Yes | **Yes** | `--confirm-apply` | Phase 3 |
 
 **There is currently no code path that writes.** Not by convention:
-`github_as_code.http` has no `-Method` parameter, and an absence test walks the parse tree
-asserting the word appears as neither a parameter nor a hashtable key anywhere in the
-repository. Widening that is [ADR 0001](docs/adr/0001-write-boundary.md), not an edit.
+`github_as_code.http` is the only file that imports `urllib.request`, and an absence test
+walks the parse tree asserting that no call anywhere passes a body and that every
+`method=` is the literal `'GET'`. Widening that is
+[ADR 0001](docs/adr/0001-write-boundary.md), not an edit.
 
 ## Quickstart
 
@@ -218,9 +219,9 @@ tested range is not making the same claim as one running inside it.
   documented behaviours, each handled with a measured guard rather than a hopeful one,
   and each covered by a test that names the failure it prevents.
 - **Absence tested from the parse tree, not from text.** No write, no `DELETE`, no
-  `users/` path, no unbounded `ConvertTo-Json`, no hashtable key that looks like a
-  destructive `PATCH` field. A grep matches prose and misses a variable; `-Method $verb`
-  is how a write would actually arrive.
+  `users/` path, no dictionary key that looks like a destructive `PATCH` field. A grep
+  matches prose and misses a variable, and `Request(url, data=...)` - the write that
+  carries no method argument at all - is how one would actually arrive.
 - **Idempotency as a design constraint.** Drift is defined against the payload that
   would be sent, so a second run is a genuine no-op - and that is asserted offline from
   a fixture rather than promised in a document.

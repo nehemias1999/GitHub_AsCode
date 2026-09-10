@@ -68,7 +68,7 @@ A change is not done until all seven hold:
 
 | Layer | Rule |
 | --- | --- |
-| `GitHubAsCode.*` | Cross-cutting. **Knows nothing about GitHub.** No URL, no endpoint, no permission name, no status code meaning |
+| `github_as_code.configuration` / `.plan` / `.report` | Cross-cutting. **Knows nothing about GitHub.** No URL, no endpoint, no permission name, no status code meaning |
 | `github_as_code.rest` / `github_as_code.graphql` | Protocol semantics: addressing, pagination, how a failure is recognised |
 | `github_as_code.repository` and its successors | Domain rules, as **pure functions**. No network at all |
 | `automations/*` | Orchestration and reporting only |
@@ -86,9 +86,9 @@ The absence tests do not try to distinguish a legitimate use from a dangerous on
 because a guard with an exemption is a guard with a hole.
 
 This has a cost, and it was paid during phase 1: the inventory's report carried a
-`private = $privateCount` field - a count, not a request field - and the guard forbidding
-a hashtable key named `private` rejected it. The field was renamed `privateCount`. That
-is the guard working. **Rename your code, do not loosen the guard.**
+`private` field - a count, not a request field - and the guard forbidding a dictionary key
+of that name rejected it. The field was renamed `privateCount`. That is the guard working.
+**Rename your code, do not loosen the guard.**
 
 ## 5. Conventions
 
