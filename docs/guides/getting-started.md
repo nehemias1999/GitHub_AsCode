@@ -95,13 +95,17 @@ The report lands under `artifacts/reports/`, as JSON and as a Markdown sibling.
 Not by hand.
 
 ```bash
-mv automations/repo-inventory/config/repositories.example.json \
+cp automations/repo-inventory/config/repositories.example.json \
    automations/repo-inventory/config/repositories.json
 ```
 
-Move it, do not copy it. `repositories.json` is the name `.gitignore` excludes;
-copying invites a differently named file full of real repository names that Git happily
-tracks.
+Copy it, and leave the template where it is. `repositories.json` is the name
+`.gitignore` excludes, so the copy is safe - what is not safe is a **third, differently
+named** file full of real repository names, which Git tracks happily; on an account with
+private repositories the names alone are worth excluding.
+
+Do not move the template away. It is a versioned file that CI validates `validate`
+against, which is the shipped example's whole job.
 
 Then edit it to describe what the report found: one entry per repository, each with the
 `class` it belongs to, and the `description` and `topics` it should carry.
@@ -134,7 +138,7 @@ GitHub.
 `repo-standards` is the second automation, and it reads only.
 
 ```bash
-mv automations/repo-standards/config/standards.example.json \
+cp automations/repo-standards/config/standards.example.json \
    automations/repo-standards/config/standards.json
 python automations/repo-standards/standards.py validate
 ```

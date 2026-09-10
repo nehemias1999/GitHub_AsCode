@@ -91,13 +91,17 @@ automation exists to prevent.
 Then derive your declaration from the report rather than writing it by hand:
 
 ```bash
-Move-Item .\automations\repo-inventory\config\repositories.example.json `
-          .\automations\repo-inventory\config\repositories.json
+cp automations/repo-inventory/config/repositories.example.json \
+   automations/repo-inventory/config/repositories.json
 ```
 
-Move it, do not copy it. The active name is what `.gitignore` excludes; a copy
-invites a differently named file full of real repository names that Git happily tracks —
-and on an account with private repositories, the names alone are worth excluding.
+Copy it, and leave the template where it is. The active name is what `.gitignore`
+excludes, so the copy is safe — what is not safe is a **third, differently named** file
+full of real repository names, which Git tracks happily; on an account with private
+repositories the names alone are worth excluding.
+
+Do not move the template away. It is a versioned file that CI validates `validate`
+against, which is the shipped example's whole job.
 
 Edit it to describe what the report found, then:
 

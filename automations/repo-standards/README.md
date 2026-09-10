@@ -55,10 +55,12 @@ rather than wrong.
 
 ## Configuration
 
-Rename the template; do not copy it. The active name is the one `.gitignore` excludes.
+Copy the template, and leave it where it is. `standards.json` is the name `.gitignore`
+excludes, so the copy is safe; moving the template away would delete a versioned file
+that CI validates `validate` against.
 
 ```bash
-mv config/standards.example.json config/standards.json
+cp config/standards.example.json config/standards.json
 ```
 
 Then describe each class:

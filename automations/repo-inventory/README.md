@@ -42,16 +42,19 @@ asserts no call anywhere passes a body and every `method=` is the literal `'GET'
 Template: `config/repositories.example.json`. Schema:
 `schemas/repositories.schema.json`.
 
-Produce the active file by **renaming**:
+Produce the active file by copying the template:
 
 ```bash
-Move-Item config\repositories.example.json config\repositories.json
+cp config/repositories.example.json config/repositories.json
 ```
 
-Move it, do not copy it. `repositories.json` is the name `.gitignore` excludes; a
-copy invites a differently named file full of real repository names that Git happily
-tracks - and on an account with private repositories, the names alone are worth
-excluding.
+Copy it, and leave the template where it is. `repositories.json` is the name
+`.gitignore` excludes, so the copy is safe - what is not safe is a **third, differently
+named** file full of real repository names, which Git tracks happily; on an account with
+private repositories the names alone are worth excluding.
+
+Do not move the template away. It is a versioned file that CI validates `validate`
+against, which is the shipped example's whole job.
 
 ### Fields
 

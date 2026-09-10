@@ -266,6 +266,20 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **The documented way to create your configuration deleted a file CI depends on.**
+  Four places said to produce the active declaration by *moving* the template -
+  "move it, do not copy it" - and two of them spelled the move as `Move-Item` with
+  backslash paths inside a ```bash fence, one with a PowerShell backtick continuation.
+
+  The stated reason was that a copy "invites a differently named file full of real
+  repository names that Git happily tracks". That reason is about a **third** file with
+  a name nothing excludes; it is not an argument against a copy to the excluded name,
+  which `.gitignore` covers exactly as well as a move does. Meanwhile the move itself
+  deletes `*.example.json` - a versioned file that the CI step *added in this same
+  release* runs `validate` against, and that is the shipped example's whole job. Found
+  by following the instruction.
+
+  Now: copy, keep the template, and the reason says what it is actually about.
 - **Fourteen documents still described the write boundary in PowerShell.** They said
   `github_as_code.http` "has no `-Method` parameter" and that a test asserts the word
   appears as neither a parameter nor a hashtable key - a claim about a language this
