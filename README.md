@@ -1,15 +1,15 @@
 # GitHub as Code
 
-Declarative, reviewable auditing of a GitHub account in pure PowerShell against the
-REST API, with no runtime dependency beyond PowerShell itself.
+Declarative, reviewable auditing of a GitHub account against the REST API, in Python,
+with no runtime dependency beyond the standard library and git.
 
 Every change is planned before it is applied, nothing is ever deleted, and no credential
 is ever committed.
 
-```powershell
-.\automations\repo-inventory\Invoke-RepositoryInventory.ps1 -Command validate   # offline, no token
-.\automations\repo-inventory\Invoke-RepositoryInventory.ps1 -Command inventory  # what exists today
-.\automations\repo-inventory\Invoke-RepositoryInventory.ps1 -Command plan       # declared vs live
+```bash
+python automations/repo-inventory/inventory.py validate   # offline, no token
+python automations/repo-inventory/inventory.py inventory  # what exists today
+python automations/repo-inventory/inventory.py plan       # declared vs live
 ```
 
 ---
@@ -72,18 +72,18 @@ flowchart TD
         RM["repo-metadata (phase 3)"]
     end
     subgraph domain [foundation - domain modules]
-        REPO[GitHub.Repository]
+        REPO[github_as_code.repository]
     end
     subgraph client [foundation - protocol clients]
-        REST[GitHub.Rest]
-        GQL["GitHub.GraphQL (phase 5)"]
+        REST[github_as_code.rest]
+        GQL["github_as_code.graphql (phase 5)"]
     end
     subgraph cross [foundation - cross-cutting]
-        CF[GitHubAsCode.Configuration]
-        PL[GitHubAsCode.Plan]
-        RP[GitHubAsCode.Report]
+        CF[github_as_code.configuration]
+        PL[github_as_code.plan]
+        RP[github_as_code.report]
     end
-    HTTP["GitHubAsCode.Http - the only Invoke-WebRequest"]
+    HTTP["github_as_code.http - the only Invoke-WebRequest"]
 
     RI --> REPO
     RI --> PL
@@ -123,27 +123,27 @@ Every module exposes the same ladder:
 | `apply` | Yes | **Yes** | `-ConfirmApply` | Phase 3 |
 
 **There is currently no code path that writes.** Not by convention:
-`GitHubAsCode.Http` has no `-Method` parameter, and an absence test walks the parse tree
+`github_as_code.http` has no `-Method` parameter, and an absence test walks the parse tree
 asserting the word appears as neither a parameter nor a hashtable key anywhere in the
 repository. Widening that is [ADR 0001](docs/adr/0001-write-boundary.md), not an edit.
 
 ## Quickstart
 
-```powershell
+```bash
 # 1. Prepare the workstation. Checks prerequisites, creates .env from the template.
-.\scripts\bootstrap.ps1
+python scripts/bootstrap.py
 
 # 2. Check the declaration - offline, no credentials needed
-.\automations\repo-inventory\Invoke-RepositoryInventory.ps1 -Command validate
+python automations/repo-inventory/inventory.py validate
 
 # 3. Fill in GITHUB_OWNER and GITHUB_TOKEN_READ in .env
 
 # 4. See what exists
-.\automations\repo-inventory\Invoke-RepositoryInventory.ps1 -Command inventory
+python automations/repo-inventory/inventory.py inventory
 
 # 5. Derive the declaration from the report, then plan - twice
-.\automations\repo-inventory\Invoke-RepositoryInventory.ps1 -Command plan
-.\automations\repo-inventory\Invoke-RepositoryInventory.ps1 -Command plan
+python automations/repo-inventory/inventory.py plan
+python automations/repo-inventory/inventory.py plan
 ```
 
 Step 5 twice is not a typo. A second `plan` reporting the same operations is what proves
@@ -181,24 +181,23 @@ means the tool is not reading the account the same way twice.
 
 ## Quality gate
 
-```powershell
-.\scripts\Invoke-Tests.ps1
+```bash
+python scripts/run_tests.py
 ```
 
-Parse check, PSScriptAnalyzer (warnings fail), the Pester suite, and a sensitive data
+Parse check, ruff (any finding fails), the test suite, and a sensitive data
 scan. Continuous integration runs the identical command on `windows-latest` under both
-`powershell` and `pwsh`, so "it passed locally" and "it passed in CI" mean the same
+Linux and Windows, so "it passed locally" and "it passed in CI" mean the same
 thing.
 
-Running the automations needs nothing but PowerShell. Running the **gate** needs two
+Running the automations needs nothing but the interpreter and git. The **gate** needs two
 modules:
 
-```powershell
-Install-Module Pester -MinimumVersion 5.5 -MaximumVersion 5.99.99 -Scope CurrentUser
-Install-Module PSScriptAnalyzer -Scope CurrentUser
+```bash
+python -m pip install "ruff>=0.6.0,<1.0.0" "jsonschema>=4.0.0,<5.0.0"
 ```
 
-The upper bound is deliberate: Pester 6 has shipped, and a suite running outside its
+The upper bound is deliberate: ruff is pre-1.0, and a suite running outside its
 tested range is not making the same claim as one running inside it.
 
 ## What this repository demonstrates
@@ -226,12 +225,12 @@ tested range is not making the same claim as one running inside it.
 | --- | --- |
 | `foundation/` | The shared layer: six modules, the project context, and the loader |
 | `automations/` | One directory per automation: entry point, config, schemas, guide |
-| `scripts/` | `bootstrap.ps1`, `Invoke-Tests.ps1`, `Test-NoSensitiveData.ps1` |
-| `tests/` | Pester suite and invented fixtures |
+| `scripts/` | `bootstrap.py`, `run_tests.py`, `check_sensitive_data.py` |
+| `tests/` | The suite, and invented fixtures |
 | `docs/` | [Documentation index](docs/README.md) |
 | `.github/workflows/` | The quality gate that runs on every push and pull request |
 | `.env.example` | Template for `.env`, and the only place variable values are named |
-| `PSScriptAnalyzerSettings.psd1` | Analyzer rules, each exclusion with its reason beside it |
+| `pyproject.toml` | The manifest, the lint rules, and the layer ladder |
 | `.local/` | Workstation scratch space. Ignored by Git; may hold real credentials |
 | `artifacts/` | Reports and run logs. Ignored by Git |
 
@@ -256,7 +255,7 @@ first `inventory` run.
 Everything in `docs/` describes the method rather than any particular account. Nothing
 here reports numbers from somebody else's repositories:
 [problem-statement.md](docs/overview/problem-statement.md) carries the commands to
-measure your own, and `tests/automations/Genericity.Tests.ps1` fails the build if an
+measure your own, and the suite fails the build if an
 account's data finds its way back in.
 
 ## Notes

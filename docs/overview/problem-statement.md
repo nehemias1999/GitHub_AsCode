@@ -103,8 +103,8 @@ gh api user/repos --paginate -f affiliation=owner --jq 'length'
 Then run `inventory` and compare — it should agree with the second number, never the
 first:
 
-```powershell
-.\automations\repo-inventory\Invoke-RepositoryInventory.ps1 -Command inventory
+```bash
+python automations/repo-inventory/inventory.py inventory
 ```
 
 The report writes the four account-level findings — repositories with no licence, with no

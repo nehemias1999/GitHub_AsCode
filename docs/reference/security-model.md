@@ -78,7 +78,7 @@ looking in the wrong place. `validate` is offline, cannot know, and does not pre
 
 Four layers, at different points:
 
-1. **The URL is rejected if it carries a credential.** `Assert-HttpBaseUrl` refuses
+1. **The URL is rejected if it carries a credential.** `assert_base_url` refuses
    userinfo in the base URL, so `https://token@host` cannot become the thing every
    later message quotes.
 2. **Redirects are not followed.** `MaximumRedirection = 0`. An `Authorization` header
@@ -86,21 +86,21 @@ Four layers, at different points:
    response body. The usual cause is a wrong base URL, so a redirect is reported as the
    configuration problem it is.
 3. **Every console line passes one funnel.** `Write-ModuleLog` applies
-   `Protect-SecretInText` before writing, so a log line added later cannot reintroduce
+   `protect_secrets_in_text` before writing, so a log line added later cannot reintroduce
    a leak. Masking at each call site would depend on remembering.
-4. **The report writer redacts twice, by different keys.** `Remove-SensitiveValue`
-   walks the object and redacts by property **name**; `Protect-SecretInText` redacts by
+4. **The report writer redacts twice, by different keys.** `remove_sensitive_values`
+   walks the object and redacts by property **name**; `protect_secrets_in_text` redacts by
    **value**, which is what catches a credential sitting under an innocent-looking name
    or inside free text.
 
-   The earlier wording here credited `Remove-SensitiveValue` with redacting by value. It
+   The earlier wording here credited `remove_sensitive_values` with redacting by value. It
    does not, and the distinction is the whole reason there are two layers: a name-based
    rule cannot see a token in a URL or in an error message, and a value-based rule cannot
    know that a field called `credentialsId` is only a reference.
 
 ## Where `.env` lives
 
-`bootstrap.ps1` restricts the new `.env` to the current user - inheritance dropped, one
+`bootstrap.py` restricts the new `.env` to the current user - inheritance dropped, one
 access rule - and says so in its output.
 
 It is best-effort: a filesystem that will not take an ACL must not stop somebody setting
@@ -119,14 +119,14 @@ step that only works on the network is not hardening.
 
 ## The sensitive data gate
 
-`scripts/Test-NoSensitiveData.ps1` runs as part of the quality gate, in two layers:
+`scripts/check_sensitive_data.py` runs as part of the quality gate, in two layers:
 
 **Structural** - shapes that are credentials whatever they contain: private key blocks,
 JWTs, cloud access keys, assigned secrets, and the GitHub token prefixes. Two rules
 cover GitHub: `gh[pousr]_` for the classic shapes, and `github_pat_` for the
 fine-grained one.
 
-`Protect-SecretInText` carries the same two prefixes plus a `Bearer` rule, for the same
+`protect_secrets_in_text` carries the same two prefixes plus a `Bearer` rule, for the same
 reason from the other direction: the gate stops a credential being committed, and the
 masker stops one being printed.
 
@@ -142,6 +142,6 @@ seeds the file from a secret and then requires it.
 ## What is deliberately not handled
 
 Writing Actions secrets. It needs NaCl sealed-box encryption against the repository
-public key, there is no pure PowerShell 5.1 implementation without a dependency, and it
+public key. The standard library has neither X25519 nor XSalsa20-Poly1305, so doing it without a dependency means implementing curve25519 by hand - and it
 would violate *names, not values*. See
 [scope-and-limits.md](../overview/scope-and-limits.md).

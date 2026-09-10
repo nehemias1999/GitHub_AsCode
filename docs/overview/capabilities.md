@@ -10,8 +10,8 @@ from the code or from an aspiration in the README.
 ## What exists now
 
 One automation, `repo-inventory`, and it **cannot write**. Not "does not write by
-convention": `GitHubAsCode.Http` has no `-Method` parameter, and
-`tests/automations/Automations.Tests.ps1` asserts from the parse tree that the word
+convention": `github_as_code.http` has no `-Method` parameter, and
+`tests/python/test_write_boundary.py` asserts from the parse tree that the word
 `Method` appears as neither a parameter nor a hashtable key anywhere in the repository.
 
 | Command | Reads live state | Writes | Needs a token |

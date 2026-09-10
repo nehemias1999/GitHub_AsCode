@@ -1,7 +1,16 @@
 # 0006 - Python, and nothing but its standard library
 
-**Status.** Accepted. Supersedes the *implementation language* of every earlier decision;
-supersedes no decision itself.
+**Status.** Accepted, and **carried out**. The transition this ADR describes is complete:
+both implementations existed side by side, the deletion trigger below was satisfied, and
+the PowerShell implementation was removed. The evidence, and the four findings the port
+produced, are in [port-status.md](../process/port-status.md).
+
+The body is unchanged. An ADR records what was decided and why at the time, and rewriting
+it in the past tense would erase the reasoning instead of updating it - the same
+treatment ADR 0004 was given.
+
+Supersedes the *implementation language* of every earlier decision; supersedes no
+decision itself.
 
 ## Context
 

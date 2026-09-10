@@ -3,10 +3,10 @@
 Reads every repository the account owns - **public and private** - and reports how live
 state differs from the declaration. It cannot write.
 
-```powershell
-.\Invoke-RepositoryInventory.ps1 -Command validate     # offline, no token
-.\Invoke-RepositoryInventory.ps1 -Command inventory    # what exists today
-.\Invoke-RepositoryInventory.ps1 -Command plan         # declared vs live
+```bash
+.\inventory.py -Command validate     # offline, no token
+.\inventory.py -Command inventory    # what exists today
+.\inventory.py -Command plan         # declared vs live
 ```
 
 ## Why it exists
@@ -34,7 +34,7 @@ make - it produces the evidence, a person makes the call.
 | `smoke` | Yes | No | Yes, read-only |
 
 There is no `apply`, and no code path that could write:
-`GitHubAsCode.Http` has no `-Method` parameter, and an absence test asserts the word
+`github_as_code.http` has no `-Method` parameter, and an absence test asserts the word
 appears as neither a parameter nor a hashtable key anywhere in the repository.
 
 ## Configuration
@@ -44,11 +44,11 @@ Template: `config/repositories.example.json`. Schema:
 
 Produce the active file by **renaming**:
 
-```powershell
+```bash
 Move-Item config\repositories.example.json config\repositories.json
 ```
 
-`Move-Item`, not `Copy-Item`. `repositories.json` is the name `.gitignore` excludes; a
+Move it, do not copy it. `repositories.json` is the name `.gitignore` excludes; a
 copy invites a differently named file full of real repository names that Git happily
 tracks - and on an account with private repositories, the names alone are worth
 excluding.

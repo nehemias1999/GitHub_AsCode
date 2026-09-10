@@ -33,7 +33,7 @@ adopted it.
 | **The API** | `GET /users/{user}/repos` returns **public repositories only**. The private ones exist solely behind `GET /user/repos` with an authenticated token. |
 | **The obvious implementation** | Enumerate the account through the endpoint that has the user's name in it. |
 | **What it destroys** | Nothing - it destroys *trust*, which is worse here. Every private repository vanishes from an inventory that reports itself complete, and a decision gets made from it. |
-| **Mitigation** | `Get-GitHubOwnedRepository` uses `/user/repos` with `affiliation=owner`. An absence test asserts no string literal anywhere in the repository begins `users/`. See [ADR 0005](../adr/0005-authenticated-account-listing.md). |
+| **Mitigation** | `owned_repositories` uses `/user/repos` with `affiliation=owner`. An absence test asserts no string literal anywhere in the repository begins `users/`. See [ADR 0005](../adr/0005-authenticated-account-listing.md). |
 
 ### 2. Topics are a replace-the-whole-collection API
 
@@ -42,7 +42,7 @@ adopted it.
 | **The API** | `PUT /repos/{owner}/{repo}/topics` replaces the entire collection. There is no per-topic route. |
 | **The obvious implementation** | Send the declared topics. |
 | **What it destroys** | Every topic somebody added and nobody wrote down. Concretely: whatever sits on a repository nobody has touched in months is exactly what nobody remembers declaring. |
-| **Mitigation** | `Get-GitHubTopicUnion` sends the union of live and declared, and reports the undeclared ones as `protected`. Removal is `reconcile`'s job, behind its own confirmation, and `reconcile` does not exist. |
+| **Mitigation** | `topic_union` sends the union of live and declared, and reports the undeclared ones as `protected`. Removal is `reconcile`'s job, behind its own confirmation, and `reconcile` does not exist. |
 
 ### 3. Branch protection replaces the whole object
 
@@ -105,7 +105,7 @@ adopted it.
 | **The API** | A GraphQL error comes back as **HTTP 200** with an `errors` array in the body and `data` set to null. |
 | **The obvious implementation** | `if ($statusCode -eq 200) { use $data }`. |
 | **What it destroys** | A `FORBIDDEN` or `RATE_LIMITED` reads as an empty result, so the plan reports "the project has no fields" instead of "I could not read it" - and the reader acts on a fabricated fact. |
-| **Mitigation** | **Phase 5.** `GitHub.GraphQL` will classify `errors` **before** looking at `data`, and any error becomes `blocked`. **Measured**: a `projectsV2` query with a token lacking `read:project` returned HTTP 200 carrying `errors[].type = "INSUFFICIENT_SCOPES"`. The fixture is committed as `tests/fixtures/graphql-errors.json` in phase 1, so the trap is written down before the code that must handle it exists. |
+| **Mitigation** | **Phase 5.** `github_as_code.graphql` will classify `errors` **before** looking at `data`, and any error becomes `blocked`. **Measured**: a `projectsV2` query with a token lacking `read:project` returned HTTP 200 carrying `errors[].type = "INSUFFICIENT_SCOPES"`. The fixture is committed as `tests/fixtures/graphql-errors.json` in phase 1, so the trap is written down before the code that must handle it exists. |
 
 ### 10. Projects v2 field options are replace-all, and field deletion is total
 
@@ -123,7 +123,7 @@ adopted it.
 | **The API** | The primary budget is 5000 requests an hour, visible in `x-ratelimit-remaining`. The **secondary** limits are undocumented ceilings on bursts of writes against one repository, and they answer 403 or 429 with `retry-after`. |
 | **The obvious implementation** | Loop the apply over every repository, retry immediately on a 403. |
 | **What it destroys** | The run stops halfway, having changed half the repositories, with no record of which half. Retrying immediately escalates a secondary limit into a longer block. |
-| **Mitigation** | `retry-after` is honoured **now**, in `Get-HttpRetryDecision`. The rest is **phase 3**, when the first writer exists: `minimumWriteIntervalMilliseconds` spacing writes, aborting before starting if `x-ratelimit-remaining` is below `minimumRateLimitRemaining`, and a receipt after every completed operation so an interrupted run is a resume rather than a guess. Those two defaults are declared in `project-context.json` and **read by nothing yet** - deliberately, because a write protection built before the writer is machinery nothing exercises. See [ADR 0001](../adr/0001-write-boundary.md). |
+| **Mitigation** | `retry-after` is honoured **now**, in `retry_decision`. The rest is **phase 3**, when the first writer exists: `minimumWriteIntervalMilliseconds` spacing writes, aborting before starting if `x-ratelimit-remaining` is below `minimumRateLimitRemaining`, and a receipt after every completed operation so an interrupted run is a resume rather than a guess. Those two defaults are declared in `project-context.json` and **read by nothing yet** - deliberately, because a write protection built before the writer is machinery nothing exercises. See [ADR 0001](../adr/0001-write-boundary.md). |
 
 ### 12. Pagination does not report a total in the body
 
@@ -132,7 +132,7 @@ adopted it.
 | **The API** | The page count arrives in the `Link` header as `rel="last"`. The body is a bare array. The default page size is 30. |
 | **The obvious implementation** | Read the first page, or loop `?page=N` until a page comes back short. |
 | **What it destroys** | Nothing visibly - which is the problem. A collection that changes while it is being read shifts the offset window, so items are skipped and the truncated list is reported as complete. This is the worst possible failure for the automation whose purpose is completeness. |
-| **Mitigation** | `Get-HttpLinkHeaderTarget` reads `rel="next"` and the loop's only termination condition is its absence. Reaching `maximumPageCount` makes the plan **`blocked`** rather than truncating quietly. Segmentation is driven by the angle brackets, not by splitting on commas, because a comma appears inside query values - `sort=full_name,asc` - and splitting there truncates the URL. |
+| **Mitigation** | `link_header_target` reads `rel="next"` and the loop's only termination condition is its absence. Reaching `maximumPageCount` makes the plan **`blocked`** rather than truncating quietly. Segmentation is driven by the angle brackets, not by splitting on commas, because a comma appears inside query values - `sort=full_name,asc` - and splitting there truncates the URL. |
 
 ### 13. A 404 means "absent OR no permission"
 
@@ -143,14 +143,14 @@ adopted it.
 | **What it destroys** | A plan that says `create` for something that already exists, followed by an apply that fails - or worse, one that succeeds against a name the reader did not expect to be free. |
 | **Mitigation** | A declared repository the listing did not return is `resolve` / `blocked`, never `create`, and the reason says both possibilities. The `AllowNotFound` switch exists but its documentation restricts it to cases where absence was established another way. |
 
-### 14. PowerShell 5.1 truncates JSON at depth 2
+### 14. A serialiser that truncates nested objects silently
 
 | | |
 | --- | --- |
-| **The API** | Not the API - the client. `ConvertTo-Json` on Windows PowerShell 5.1 defaults to `-Depth 2`. |
-| **The obvious implementation** | `$variables \| ConvertTo-Json`. |
+| **The API** | Not the API - the client, and no longer this one. `ConvertTo-Json` on Windows PowerShell 5.1 defaults to `-Depth 2`. |
+| **The obvious implementation** | Serialise without saying how deep. |
 | **What it destroys** | Anything nested serialises as the **name of its type**, so the request goes out malformed. Combined with row 9, GraphQL then rejects it with an HTTP 200 - and nothing in the chain reports a problem the reader can act on. |
-| **Mitigation** | `-Depth` is always explicit, and an absence test walks the parse tree asserting no `ConvertTo-Json` call omits it. |
+| **Mitigation** | **Gone with the implementation.** `json.dumps` has no depth limit, so the guard that asserted every `ConvertTo-Json` passed `-Depth` had nothing left to test and was not ported. The row is rewritten rather than removed: this document is the ledger of why each guard exists, and an entry deleted without trace loses the reason. Anyone reintroducing a serialiser with a depth default should read this first. |
 
 ### 15. urllib follows redirects and re-sends the Authorization header
 

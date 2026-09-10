@@ -8,16 +8,23 @@ what "finished" means, and the conventions that keep the code consistent.
 Each of these exists because breaking it damages an account, and each is enforced by a
 test rather than by trust.
 
-1. **No write path exists in phases 1 and 2.** `GitHubAsCode.Http` has no `-Method`
-   parameter. Adding one is [ADR 0001](docs/adr/0001-write-boundary.md) plus the four
-   named changes it lists - not an edit.
+1. **No write path exists in phases 1 and 2.** `github_as_code.http` sends `GET` and
+   nothing else. Adding a write is [ADR 0001](docs/adr/0001-write-boundary.md) plus the
+   four named changes it lists - not an edit.
+
+   The vector is not the one the PowerShell guards were shaped around. There is no
+   `-Method` to add: `urllib.request.Request(url, data=...)` promotes a GET to a POST
+   from the presence of a body alone, with nothing at the call site that reads like a
+   write. The guards assert on the shape of the call.
 
 2. **`DELETE` never appears, in any spelling, at any phase.** Not for a repository, a
    label, a topic, or a Projects v2 field. Every one destroys something whose blast
    radius is not in the plan.
 
-3. **`Invoke-WebRequest` lives in exactly one file**, `GitHubAsCode.Http.psm1`. One
-   place to audit, one place a write could ever be added.
+3. **`urllib.request` is imported by exactly one module**, `github_as_code.http`. One
+   place to audit, one place a write could ever be added - and a guard checks the module
+   is still where it is expected to be, because renaming it would otherwise turn that
+   check into one that passes over nothing.
 
 4. **The account listing comes from `GET /user/repos`, never `GET /users/{user}/repos`.**
    The second returns public repositories only, so it omits every private repository.
@@ -32,8 +39,10 @@ test rather than by trust.
 7. **A 404 is never read as absence.** GitHub answers 404 both for something that does
    not exist and for something the token cannot see. Report `blocked`, not `create`.
 
-8. **`ConvertTo-Json` always gets an explicit `-Depth`.** Windows PowerShell 5.1
-   defaults to 2 and silently serialises nested objects as the name of their type.
+8. **Redirects are refused, and the token never travels to a second host.**
+   `urllib.request` follows a 30x by default and rebuilds the next request from the
+   original headers, `Authorization` included. Two servers on the loopback interface
+   prove the refusal holds, and prove the stock opener would not have.
 
 9. **Never read `.env`, `.local/` or `artifacts/`.** They hold real credentials, real
    account data, and run output. `.gitignore` excludes them; do not work around it.
@@ -42,12 +51,10 @@ test rather than by trust.
 
 A change is not done until all seven hold:
 
-1. **Both gates pass.** `.\scripts\Invoke-Tests.ps1` - including zero PSScriptAnalyzer
-   **warnings** - and `python scripts/run_tests.py`. There are two for as long as there
-   are two implementations: ADR 0006 keeps the PowerShell alive as the only oracle until
-   parity is proven, and every pull request leaves both green. A change that touches only
-   one half still runs both, because "it did not touch that" is the claim the gate exists
-   to check.
+1. **`python scripts/run_tests.py` passes** - parse, ruff, the suite, and the sensitive
+   data scan, with no ruff findings at all. There were two gates while there were two
+   implementations; the evidence that closed that window is in
+   [port-status.md](docs/process/port-status.md).
 2. Every new or changed behaviour has a test **named after the failure it prevents**.
 3. Every fixture is invented: `EXAMPLE-owner`, `EXAMPLE-repo`, `example.com`.
 4. `validate` still passes offline, with no network and no token, for every automation.
@@ -62,8 +69,8 @@ A change is not done until all seven hold:
 | Layer | Rule |
 | --- | --- |
 | `GitHubAsCode.*` | Cross-cutting. **Knows nothing about GitHub.** No URL, no endpoint, no permission name, no status code meaning |
-| `GitHub.Rest` / `GitHub.GraphQL` | Protocol semantics: addressing, pagination, how a failure is recognised |
-| `GitHub.Repository` and its successors | Domain rules, as **pure functions**. No network at all |
+| `github_as_code.rest` / `github_as_code.graphql` | Protocol semantics: addressing, pagination, how a failure is recognised |
+| `github_as_code.repository` and its successors | Domain rules, as **pure functions**. No network at all |
 | `automations/*` | Orchestration and reporting only |
 
 If the shared layer seems to need a special case for your module, the logic belongs in
@@ -88,26 +95,32 @@ is the guard working. **Rename your code, do not loosen the guard.**
 **Code and comments in English, ASCII only. Documentation in Spanish or English, chosen
 per document and consistent within it.** The existing documents are in English.
 
-- `Set-StrictMode -Version Latest` and `$ErrorActionPreference = 'Stop'` at the top of
-  every file.
-- Comment-based help on every exported function, with `.SYNOPSIS`, `.DESCRIPTION`, a
-  `.PARAMETER` for each parameter, `.EXAMPLE` and `.OUTPUTS`.
+ASCII only is enforced by review rather than by a test, and it has bitten once: a literal
+byte order mark written into a `lstrip` call is invisible in a diff. Write `"\ufeff"`.
+
+- A docstring on every module and every public function, with what it does, `Args:`,
+  `Returns:`, `Raises:` where it raises, and an `Example:`.
 - **Comments say why, not what.** A comment restating the code is noise; a comment
   naming the failure the code prevents is the most valuable line in the file.
-- Four-space indent, two for JSON and YAML. `.editorconfig` governs; do not fight it.
-- **A closing brace must be in column 0.** `tests/automations/SensitiveDataGate.Tests.ps1`
-  extracts a function from `scripts/Test-NoSensitiveData.ps1` with the regex
-  `(?ms)^function Get-GitIgnoredPath \{.*?^\}`, and an indented closing brace breaks it
-  with "Could not extract" - a failure that names the wrong thing.
+- Four-space indent, two for JSON and YAML, 100 columns. `.editorconfig` and
+  `pyproject.toml` govern; do not fight either.
+- Type hints on every public signature. They are not checked by a tool here, so they are
+  documentation that happens to be machine-readable - which means a wrong one is worse
+  than none.
+- **A test imports the module it tests.** It sounds obvious and was not available
+  before: the PowerShell secret-gate suite had to extract a function out of the script
+  with a regular expression anchored on a closing brace in column 0, so an indented brace
+  broke it with "Could not extract" - a failure that names the wrong thing and sends the
+  reader to the wrong file. If a check ever needs to read source as text again, ask first
+  whether it can import it instead.
 - Exit codes: `0` nothing blocked, `2` something indeterminate, `1` the run failed.
-- **`PSScriptAnalyzerSettings.psd1` has no exclusions, and adding one needs evidence
+- **`pyproject.toml` excludes no lint rule, and adding an exclusion needs evidence
   measured HERE** - the finding count, the shapes flagged, and why changing the code
-  would be worse. The six inherited exclusions were removed after measuring zero
-  findings for each: an exclusion with somebody else's reason beside it is worse than
-  one with no reason, because it looks answered.
-- A pure function with a state-changing verb (`New-`, `Set-`) gets a
-  `SuppressMessageAttribute` at the function, with the reason - never a settings-wide
-  exclusion. Narrow the suppression to the thing you have justified.
+  would be worse. The PowerShell settings file inherited six exclusions and dropped all
+  six after measuring zero findings for each: an exclusion carrying somebody else's
+  reason is worse than one with no reason, because it looks answered.
+- A `noqa` goes on the line, names the rule, and carries the reason - never a file-wide
+  or project-wide exclusion. Narrow the suppression to the thing you have justified.
 
 ## 6. Commits
 
@@ -116,20 +129,29 @@ where one exists (`#42 read the account listing from the authenticated endpoint`
 
 ## 7. Working with the sibling repositories
 
-`Jenkins_AsCode` and `ADO_AsCode` are the source of the foundation, the command ladder
+`Jenkins_AsCode` and `ADO_AsCode` are the source of the shared layer, the command ladder
 and the automation contract. Port from them rather than reinventing - but **port
-critically**. Phase 1 found six real defects in the inherited code, and the pattern
-running through them is worth naming: **a ported justification stops being evidence.**
+critically**. Phase 1 found six real defects in the inherited code, and the port to
+Python found more, all of the same shape. The pattern is worth naming: **a ported
+justification stops being evidence.**
 
-- `Invoke-Tests.ps1` selected the highest installed Pester and imported it with
-  `-MinimumVersion 5.0`, so once Pester 6 shipped it ran the suite on an untested major
-  and reported the result as if it were tested.
+The port itself is the longest worked example. Every module was translated with its
+comments, and in four places the comment survived while the hazard it described did not -
+`ConvertTo-Json` depth, the invariant-culture date parse - while two new hazards arrived
+that no comment mentioned, because they belong to the new language. Read
+[port-status.md](docs/process/port-status.md) before assuming a carried-over reason still
+applies.
+
+- The PowerShell test runner selected the highest installed Pester and imported it
+  with `-MinimumVersion 5.0`, so once Pester 6 shipped it ran the suite on an untested
+  major and reported the result as if it were tested. The Python gate carries the same
+  shape of bound on `ruff`, for the same reason.
 - The "network I/O in one place" absence test matched raw file **content**, so it fired
   on any file that merely mentioned `Invoke-WebRequest` in a comment - which meant the
   comment explaining the boundary would have had to be deleted to make the guard pass.
 - The sensitive data gate's GitHub rule covered only the classic `gh*_` prefixes, not
   `github_pat_` - the fine-grained format this repository recommends.
-- All six PSScriptAnalyzer exclusions had zero findings here, so six rules were switched
+- All six static-analysis exclusions had zero findings here, so six rules were switched
   off on another codebase's evidence.
 - `.gitattributes` and `.editorconfig` justified real constraints by citing functions
   and test suites that do not exist in this repository.

@@ -28,7 +28,7 @@ silent failure, and it gets trusted because it usually works.
 | **Delete a label** | Removes it from every issue and pull request that carried it, with no record of which. |
 | **Rename a label** | A `PATCH` with `new_name` rewrites the label across the entire issue history in one call, and there is no batch undo. |
 | **Delete a Projects v2 field** | Deletes that field's value on every item in the project. There is no recycle bin. |
-| **Write an Actions secret or variable** | A secret must be encrypted with a NaCl sealed box against the repository public key. There is no pure PowerShell 5.1 implementation without a dependency, and it would violate *names, not values* - this repository's configuration declares the name of a variable and never its content. |
+| **Write an Actions secret or variable** | A secret must be encrypted with a NaCl sealed box against the repository public key. The standard library has neither X25519 nor XSalsa20-Poly1305, so a pure-standard-library implementation means writing curve25519 by hand - and it would violate *names, not values* - this repository's configuration declares the name of a variable and never its content. |
 | **Manage collaborators, webhooks, Pages or Dependabot config** | Access grants and secret carriers. Different review standard, different repository. |
 
 ## Not implemented because the API cannot

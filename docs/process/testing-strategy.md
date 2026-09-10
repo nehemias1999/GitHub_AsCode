@@ -2,44 +2,30 @@
 
 **Purpose.** Say what is tested, how, and what each guard is protecting against.
 
-**Scope.** `tests/`, `scripts/Invoke-Tests.ps1`, and `scripts/run_tests.py`.
+**Scope.** `tests/python/`, `scripts/run_tests.py`, and `scripts/check_sensitive_data.py`.
 
 **Audience.** Anyone adding a test, and anyone wondering why the suite refuses
 something.
 
-## Two gates, for as long as there are two implementations
-
-`scripts/Invoke-Tests.ps1` is the PowerShell gate. `scripts/run_tests.py` is the Python
-one. Both run in CI on every pull request, and every pull request leaves both green.
-
-This is a cost, and it is temporary and bounded rather than a maintenance model. ADR
-0006 keeps the PowerShell implementation alive because it is the only oracle for
-"does the port produce the same answers?", and states the trigger for deleting it. The
-PowerShell gate cannot serve both halves: it needs PowerShell, and requiring PowerShell
-on a Linux agent to test a tool whose whole point is running there without it would be
-an odd thing to write down. When the PowerShell goes, `Invoke-Tests.ps1` goes with it
-and one gate is left.
-
-Both gates now run the sensitive data scan. Until `scripts/check_sensitive_data.py`
-existed, the Python one said on every run that it did not - because a green line covering
-less than the other gate must not look like one covering the same. That sentence has
-stopped being true, which is the condition [port-status.md](port-status.md) sets before
-the PowerShell gate can be removed: port the scan first, or the removal quietly drops a
-check while every gate stays green.
-
-The two agree on this tree - 102 files scanned, 38 skipped as ignored, no findings -
-which is the cheapest confirmation that the port did not narrow what is covered.
-
 ## One definition of "passes"
 
-`scripts/Invoke-Tests.ps1`. Parse check, PSScriptAnalyzer, Pester, sensitive data scan.
-CI runs the identical command, so "it passed locally" and "it passed in CI" mean the
-same thing. Every check that fails adds a line; the run reports all of them rather than
-stopping at the first.
+`scripts/run_tests.py`. Parse check, ruff, the suite, sensitive data scan. CI runs the
+identical command, so "it passed locally" and "it passed in CI" mean the same thing.
+Every check that fails adds a line; the run reports all of them rather than stopping at
+the first.
 
-A missing analyser is a **failure**, not a skip: passing without analysing produces the
-same output as analysing cleanly, and `-Skip Analyzer` already exists for anyone who
-means to leave it out. The same reasoning applies to Pester finding no test files.
+A missing linter is a **failure**, not a skip: passing without linting produces the same
+output as linting cleanly, and `--skip lint` already exists for anyone who means to leave
+it out. The same reasoning applies to discovering no tests, and to counting a skipped
+test as a pass - which the runner did until it was caught, because `unittest`'s
+`testsRun` includes skips.
+
+There were two gates while there were two implementations, and the second one was the
+oracle rather than a duplicate. That window is closed:
+[port-status.md](port-status.md) holds the evidence, including the one ordering
+constraint that made it safe - the sensitive data scan had to be ported **before** the
+PowerShell gate went, or the removal would have quietly dropped a check while every gate
+stayed green.
 
 ## Name a test after the failure it prevents
 
@@ -69,20 +55,9 @@ A test asserts every URL in every committed template resolves to a reserved
 
 ## Absence tests
 
-`tests/automations/Automations.Tests.ps1`, read from the **parse tree** and not from the
-text. A grep matches prose and misses a variable: `-Method $verb` is exactly how a write
-would actually arrive, and no amount of string matching sees it.
-
-| Guard | Protects against |
-| --- | --- |
-| Network I/O in exactly one file | Losing the single place a write could be added, and the single place to audit |
-| No `Method` as a parameter or hashtable key, anywhere | Any write at all, in phases 1 and 2 |
-| No `DELETE`, in any spelling | The one method this repository never acquires - not for a repository, a label, a topic or a project field |
-| `delete_repo` named nowhere but the warning that refuses it | A token existing that can delete a repository |
-| No hashtable key named `private`, `visibility`, `archived`, `is_template` or `default_branch` | A generic writer reaching the `PATCH /repos` fields that look ordinary and are not |
-| No string literal beginning `users/` | Reading the account listing from the endpoint that hides private repositories |
-| `ConvertTo-Json` always passes `-Depth` | The PowerShell 5.1 default of 2, which serialises nested objects as the name of their type |
-| No `$ConfirmApply` while no verb writes | Promising a capability that does not exist, which is the first thing somebody reaches for |
+The table is further down, under **The absence tests, ported to a different write
+vector**: there was a second set describing the PowerShell guards, and it went with the
+implementation it guarded rather than being left to describe tests nobody can run.
 
 > The `private` guard is absolute rather than context-aware, and it earned its keep
 > during phase 1: the inventory's report detail had a `private = $privateCount` key -
@@ -95,37 +70,39 @@ would actually arrive, and no amount of string matching sees it.
 Nothing writes yet, but the strategy is fixed now, because it is what the module
 boundaries were drawn for. Four levels:
 
-**1. The payload is a pure function.** `Get-GitHubTopicUnion` and its successors return
+**1. The payload is a pure function.** `topic_union` and its successors return
 the value that would be sent, and it is compared against a fixture. This is not a
 testing convenience: **drift is defined against the payload that would be sent**, not
 against the declaration. If the payload is a pure value, drift is a comparison of
 values.
 
-**2. The transport is mocked.** `Mock Invoke-GitHubRequest -ModuleName GitHub.Repository`
-records the calls, and the test asserts method, path and body. The assertion that
-matters most is the negative one: under `plan`, or under `apply` without
-`-ConfirmApply`, **not one call was made with a method other than GET**.
+**2. The transport is injected.** Every function that reaches the network takes a
+`transport` argument defaulting to the real one, so a test hands it a fake that records
+the calls and asserts path, query and headers. The assertion that matters most is the
+negative one: **not one call carried a method or a body at all**.
 
 **3. Idempotency is executed, not promised.** A fixture of the state *after* an apply,
 and a second `plan` over it that must report `pending = 0` and `blocked = 0`. Level 1
 is what makes this possible offline - and it is already in place:
-`GitHub.Repository.Tests.ps1` asserts that the union of a first payload with the same
-declaration produces no change.
+`tests/python/test_repository.py` asserts that the union of a first payload with the
+same declaration produces no change, and `tests/python/test_repo_inventory.py` runs the
+whole ladder twice and compares the operations.
 
 **4. End to end, offline, in CI.** The gate, then each automation's `validate` against
-its own template, on both `powershell` and `pwsh`, with no network and no credential.
+its own template, on Linux and Windows and on both ends of the supported interpreter
+range, with no network and no credential.
 
-## What the Python gate checks, and what it cannot
+## What the gate checks, and what it cannot
 
-`scripts/run_tests.py`. Parse, ruff, `unittest`, sensitive data scan. Same shape and
-same reasoning as the PowerShell runner: increasing order of cost, every failure adds a line rather than
-stopping the run, a missing linter is a **failure** and not a skip, and an empty test
-discovery is a failure too - green from a run that tested nothing looks exactly like
-green from a run that tested something.
+Parse, ruff, `unittest`, sensitive data scan, in increasing order of cost. Every failure
+adds a line rather than stopping the run. A missing linter is a **failure** and not a
+skip, and an empty test discovery is a failure too - green from a run that tested nothing
+looks exactly like green from a run that tested something.
 
 `unittest` rather than a third-party runner is a choice, not an oversight: it is in the
-standard library, so the Python gate needs exactly one development dependency instead
-of two. ADR 0006 permits either.
+standard library, so the gate needs one development dependency for linting and one for
+the differential schema check, and nothing for running the tests. ADR 0006 permits
+either.
 
 ### Three guards for one rule: no dependencies
 
@@ -261,19 +238,8 @@ of modules at the same layer went through in silence.
 
 ## The support floor is only half-testable locally
 
-`PSUseCompatibleSyntax` is configured for 5.1 and 7.0, and warnings fail the gate, so
-syntax incompatibility is caught statically wherever the suite runs.
-
-Actually *executing* on both is often a CI-only property. A Windows machine may ship
-Windows PowerShell 5.1 and nothing else, in which case a local run exercises the floor
-alone. The CI matrix runs `powershell` and `pwsh`, and tests that spawn a child process
-use `Get-PowerShellHostPath` - the host running the suite - so a run under 7 genuinely
-tests 7 rather than shelling out to 5.1 and reporting a pass for both.
-
-If you work on this repository, check which engines your machine actually has before
-concluding that a green local run covers the declared support floor.
-
-**On the Python side this is worse, and the loss is deliberate rather than unnoticed.**
+**This is a real downgrade from what the repository had, and it is recorded rather than
+absorbed.**
 `PSUseCompatibleSyntax` checked the 5.1/7.0 floor statically, on every machine that ran
 the gate. Python has no equivalent. `ruff`'s `target-version = "py311"` catches the
 subset that is syntax - a 3.12 generic is flagged, a 3.12 standard-library function is

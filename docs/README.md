@@ -17,7 +17,7 @@ Routed by need, not by folder.
 | Choose and scope a token | [security-model.md](reference/security-model.md) |
 | **Learn the API traps** | [github-notes.md](reference/github-notes.md) |
 | Know how it is tested | [testing-strategy.md](process/testing-strategy.md) |
-| **Know where the port is, and what deleting the PowerShell needs** | [port-status.md](process/port-status.md) |
+| **Read how the port ran, and what it found** | [port-status.md](process/port-status.md) |
 
 ## Decisions
 

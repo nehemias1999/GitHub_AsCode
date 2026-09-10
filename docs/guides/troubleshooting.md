@@ -29,8 +29,8 @@ Cause, in order of likelihood:
 
 Cross-check against a different tool:
 
-```powershell
-gh repo list your-login --limit 200 | Measure-Object
+```bash
+gh repo list your-login --limit 200 | wc -l
 gh api graphql -f query='{ viewer { repositories(first:1, ownerAffiliations:OWNER) { totalCount } } }'
 ```
 
@@ -38,7 +38,7 @@ gh api graphql -f query='{ viewer { repositories(first:1, ownerAffiliations:OWNE
 
 The token was rejected. Three causes, and the third is the one people miss:
 
-- it is not set - `Import-GitHubAsCodeEnvironment` treats `.env` as optional, so a
+- it is not set - `load_environment` treats `.env` as optional, so a
   missing file is not an error
 - it was revoked
 - **it expired.** A fine-grained token has a fixed expiry date, and the resulting 401
@@ -80,7 +80,7 @@ An idempotency failure, and always one of these:
 - **A description longer than 350 characters.** GitHub truncates it, so the declared
   value can never compare equal. `validate` catches this offline.
 - **A topic differing only in case.** GitHub lowercases topics on the way in.
-  `Get-GitHubTopicUnion` normalises before comparing, so this should not happen; if it
+  `topic_union` normalises before comparing, so this should not happen; if it
   does, the normalisation has a hole.
 - **A homepage declared as `null` rather than an empty string.** The API returns an
   unset homepage as `""` and an unset description as `null`, inconsistently.
@@ -97,29 +97,35 @@ each problem. Usually one of:
 - a `-RepositoryName` naming something not declared, which would silently narrow the
   run to nothing
 
-## The gate fails on PSScriptAnalyzer warnings
+## The gate fails on a lint finding
 
-Warnings fail, deliberately. `PSScriptAnalyzerSettings.psd1` declares
+Every finding fails, deliberately. `pyproject.toml` declares
 `Severity = @('Error','Warning')`, so they were already in scope; a runner that ignored
 them made the whole documented exclusion list decorative. It matters specifically too:
-`PSUseCompatibleSyntax` emits Warning, so ignoring warnings means nothing enforces the
-declared 5.1 and 7.0 support floor.
+no exclusions at all, so nothing here is switched off on another codebase's evidence.
 
-Fix them, or add an exclusion in that file **with its reason beside it**.
+Fix the finding, or add a `noqa` on the line **with its reason beside it**. A
+project-wide exclusion needs evidence measured here: the finding count, the shapes
+flagged, and why changing the code would be worse.
 
-## The gate says Pester is outside the tested range
+## The gate says a check was skipped
 
-The suite is written for Pester 5.5 or later, below 6.0, and no such version is
-installed. It runs anyway and says so. Install the tested major:
+The differential schema conformance check needs `jsonschema`, a development dependency
+that is not always installed. It skips rather than passing, and the run prints every skip
+with its reason - a skipped conformance test and a passing one must not look alike:
 
-```powershell
-Install-Module Pester -MinimumVersion 5.5 -MaximumVersion 5.99.99 -Scope CurrentUser -Force
+```bash
+python -m pip install "jsonschema>=4.0.0,<5.0.0"
 ```
+
+The sensitive data gate reports the same way. With no `.local/sensitive-terms.txt` it
+runs its structural rules only, and says so in its summary line rather than reporting an
+unqualified pass.
 
 ## A GraphQL call returns empty rather than failing
 
 Not reachable in phase 1 - there is no GraphQL client yet - but worth knowing now,
-because it is the trap the whole design of `GitHub.GraphQL` answers.
+because it is the trap the whole design of `github_as_code.graphql` answers.
 
 GraphQL reports failure with **HTTP 200** and an `errors` array. A client checking only
 the status code reads `FORBIDDEN` or `RATE_LIMITED` as an empty result. That was

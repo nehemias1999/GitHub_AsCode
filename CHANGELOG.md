@@ -10,8 +10,40 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Removed
+
+- **The PowerShell implementation.** `foundation/`, the Pester suites, `Invoke-Tests.ps1`,
+  `Test-NoSensitiveData.ps1`, `bootstrap.ps1`, `PSScriptAnalyzerSettings.psd1` and
+  `Invoke-RepositoryInventory.ps1` - about 9,500 lines, and the `gate` CI job with them.
+
+  **The evidence ADR 0006 requires, recorded here as it asks.** Four runs against a live
+  account inside one rate-limit window, reading the same declaration:
+  `declarationFingerprint` `sha256:7bf2e53fce4934ee048e87cbc3156f25999f233d07428fdfd421e99d51d632a5`,
+  identical across all four; `ps-inventory.json` against `py-inventory.json` and
+  `ps-plan.json` against `py-plan.json`, both exit 0 with no differences outside the
+  normalised set. The dual gate was green on `ubuntu-latest` and `windows-latest`
+  throughout.
+
+  The `ConvertTo-Json` row in `docs/reference/github-notes.md` is **rewritten, not
+  removed**: that document is the ledger of why each guard exists, and an entry deleted
+  without trace loses the reason. `.editorconfig` lost the citation behind its
+  closing-brace rule and says so, rather than keeping a reason that no longer resolves.
+
 ### Added
 
+- **`scripts/bootstrap.py`** - the workstation setup, ported. It restricts the new `.env`
+  with `chmod 0600` where the platform has it and `icacls` on Windows, best-effort and
+  saying which happened, for the reason the PowerShell version measured: a hardening step
+  that only works on the network is not hardening.
+- **`tests/python/test_automation_contract.py` and `tests/python/test_template_genericity.py`.**
+  Three sets of guards in the deleted suite had nothing to do with PowerShell - the
+  automation contract, the template genericity rules, and the documentation index check -
+  and would have been dropped silently. The lesson is in `port-status.md`: before deleting
+  a test suite, list what it checks that is **not** about the thing being deleted. One
+  ordering constraint was foreseen; three were not.
+- The genericity guard then caught the removal in the act. `TEMPLATE-AUTHOR` lived in six
+  PowerShell module manifests, so the deletion took the placeholder with it and the ported
+  test failed on its first run. It now lives in `pyproject.toml`.
 - **`scripts/check_sensitive_data.py` - the sensitive data gate, ported**, and wired into
   `scripts/run_tests.py`. Both gates now run it and they agree on this tree: 102 files
   scanned, 38 skipped as ignored, no findings. That was the one ordering constraint

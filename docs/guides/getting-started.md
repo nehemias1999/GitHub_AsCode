@@ -6,53 +6,32 @@
 
 **Audience.** Anyone running this for the first time.
 
-## Two implementations, for now
-
-Every command below has a Python equivalent, and both are supported until the port
-finishes. Which one to use: **Python if you are on Linux or in a container**, since that
-is the requirement the port exists for; either one on Windows.
-
-```powershell
-.\automations\repo-inventory\Invoke-RepositoryInventory.ps1 -Command validate
-```
-
-```bash
-python automations/repo-inventory/inventory.py validate
-```
-
-The arguments map one to one: `-Command X` becomes the first positional argument, and
-`-RepositoryName` / `-EnvFile` / `-ConfigurationPath` / `-ReportPath` become
-`--repository-name` / `--env-file` / `--configuration-path` / `--report-path`. Both read
-the same `.env` and the same declaration, and both write the same report shape.
-
-[port-status.md](../process/port-status.md) says where the port is and what removing the
-PowerShell half will take.
-
 ## Prerequisites
 
-For the PowerShell half: PowerShell, and nothing else. Windows PowerShell 5.1 is the
-supported floor; PowerShell 7 also works.
+Python 3.11 or later, git, and nothing else. There is no package to install to run the
+tool, which three guards in the suite prove - one of them by running `validate` with no
+`site-packages` at all.
 
-For the Python half: Python 3.11 or later, and nothing else - no package to install,
-which three guards in the suite prove.
+The floor is 3.11 for a concrete reason rather than for novelty, and
+[ADR 0006](../adr/0006-python-and-the-standard-library.md) gives it.
 
-Running the **quality gate** needs two modules, which `bootstrap.ps1 -CheckOnly`
-reports on:
+Running the **quality gate** needs two development tools, which
+`bootstrap.py --check-only` reports on:
 
-```powershell
-Install-Module Pester -MinimumVersion 5.5 -MaximumVersion 5.99.99 -Scope CurrentUser
-Install-Module PSScriptAnalyzer -Scope CurrentUser
+```bash
+python -m pip install "ruff>=0.6.0,<1.0.0" "jsonschema>=4.0.0,<5.0.0"
 ```
 
-The upper bound on Pester is deliberate. `Invoke-Tests.ps1` prefers the newest version
-inside that range and falls back to a newer major only with a line saying so - because
-a suite running outside its tested range is not making the same claim as one running
-inside it, and the two must not look alike.
+The upper bound on ruff is deliberate: this repository excludes no lint rule, so a rule
+added by a new release fails the gate on code that did not change - a build that breaks
+on a day nobody committed. Without `jsonschema` the differential schema check skips
+rather than passing, and the run prints every skip with its reason, because a skipped
+conformance test and a passing one must not look alike.
 
 ## 1. Prepare the workstation
 
-```powershell
-.\scripts\bootstrap.ps1
+```bash
+python scripts/bootstrap.py
 ```
 
 Checks prerequisites and creates `.env` from `.env.example`.
@@ -62,8 +41,8 @@ Checks prerequisites and creates `.env` from `.env.example`.
 Do this before setting up any credential. It contacts nothing and needs no token, so if
 it fails, the problem is in the file and not in your setup.
 
-```powershell
-.\automations\repo-inventory\Invoke-RepositoryInventory.ps1 -Command validate
+```bash
+python automations/repo-inventory/inventory.py validate
 ```
 
 With no active declaration yet, it validates the shipped template and says so.
@@ -97,16 +76,16 @@ yet.
 
 ## 5. Inventory the account
 
-```powershell
-.\automations\repo-inventory\Invoke-RepositoryInventory.ps1 -Command inventory
+```bash
+python automations/repo-inventory/inventory.py inventory
 ```
 
 Read the summary. **The number that matters is the private count.** If your account has
 private repositories and this reports zero, something is reading the public endpoint -
 which is the exact failure this automation exists to prevent. Cross-check it:
 
-```powershell
-gh repo list your-login --limit 200 | Measure-Object
+```bash
+gh repo list your-login --limit 200 | wc -l
 ```
 
 The report lands under `artifacts/repo-inventory/`, as JSON and as Markdown.
@@ -115,12 +94,12 @@ The report lands under `artifacts/repo-inventory/`, as JSON and as Markdown.
 
 Not by hand.
 
-```powershell
-Move-Item .\automations\repo-inventory\config\repositories.example.json `
-          .\automations\repo-inventory\config\repositories.json
+```bash
+mv automations/repo-inventory/config/repositories.example.json \
+   automations/repo-inventory/config/repositories.json
 ```
 
-`Move-Item`, not `Copy-Item`. `repositories.json` is the name `.gitignore` excludes;
+Move it, do not copy it. `repositories.json` is the name `.gitignore` excludes;
 copying invites a differently named file full of real repository names that Git happily
 tracks.
 
@@ -129,8 +108,8 @@ Then edit it to describe what the report found: one entry per repository, each w
 
 ## 7. Plan, and get to zero
 
-```powershell
-.\automations\repo-inventory\Invoke-RepositoryInventory.ps1 -Command plan
+```bash
+python automations/repo-inventory/inventory.py plan
 ```
 
 What you are aiming for is not "all ok":
@@ -150,32 +129,18 @@ what makes any later finding believable: it proves the inventory and the compari
 agree. If the two runs differ over an unchanged account, the difference is not on
 GitHub.
 
-## 8. Run the gates before committing anything
-
-Both of them, because there are two implementations:
-
-```powershell
-.\scripts\Invoke-Tests.ps1
-```
+## 8. Run the gate before committing anything
 
 ```bash
 python scripts/run_tests.py
 ```
 
-The first is the parse check, PSScriptAnalyzer, Pester and the sensitive data scan. The
-second is the parse check, ruff, the Python suite and the same scan. Both cover the same
-ground; they agree on this tree file for file.
+Parse check, ruff, the suite, and the sensitive data scan. CI runs the identical command,
+so "it passed locally" and "it passed in CI" mean the same thing.
 
-CI runs both identical commands, so "it passed locally" and "it passed in CI" mean the
-same thing.
-
-The Python gate needs `ruff`, and `jsonschema` for the differential schema conformance
-check. Without `jsonschema` that check skips rather than passing, and the run prints
-every skip with its reason:
-
-```bash
-python -m pip install "ruff>=0.6.0,<1.0.0" "jsonschema>=4.0.0,<5.0.0"
-```
+Every skip is printed with its reason. A check that did not run and a check that passed
+must not look alike, which is why the run says which layers of the secret scan answered
+rather than reporting an unqualified pass.
 
 ## When something goes wrong
 

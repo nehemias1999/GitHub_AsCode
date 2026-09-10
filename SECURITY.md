@@ -10,8 +10,8 @@ and not a step-by-step extraction path.
 
 Currently: **nothing.** There is no code path that writes.
 
-That is not a convention. `GitHubAsCode.Http` has no `-Method` parameter, and
-`tests/automations/Automations.Tests.ps1` walks the parse tree asserting the word
+That is not a convention. `github_as_code.http` has no `-Method` parameter, and
+`tests/python/test_write_boundary.py` walks the parse tree asserting the word
 `Method` appears as neither a command parameter nor a hashtable key anywhere in the
 repository. Widening it is [ADR 0001](docs/adr/0001-write-boundary.md).
 
@@ -38,16 +38,16 @@ job.
 
 Four layers, at different points:
 
-1. **A base URL carrying a credential is rejected.** `Assert-HttpBaseUrl` refuses
+1. **A base URL carrying a credential is rejected.** `assert_base_url` refuses
    userinfo, so `https://token@host` cannot become the string every later message
    quotes.
 2. **Redirects are not followed.** An `Authorization` header forwarded to whatever host
    a 30x points at is a credential disclosure driven by a response body. The usual cause
    is a wrong base URL, so a redirect is reported as the configuration problem it is.
 3. **Every console line passes one funnel.** `Write-ModuleLog` applies
-   `Protect-SecretInText` before writing, so a log line added later cannot reintroduce a
+   `protect_secrets_in_text` before writing, so a log line added later cannot reintroduce a
    leak.
-4. **The report writer redacts by value.** `Remove-SensitiveValue` walks the object
+4. **The report writer redacts by value.** `remove_sensitive_values` walks the object
    before serialising, so a token that reached a nested property still does not reach the
    file.
 
@@ -56,7 +56,7 @@ is server-controlled input, and following it would send the `Authorization` head
 
 ## The sensitive data gate
 
-`scripts/Test-NoSensitiveData.ps1` runs as part of the quality gate, in two layers.
+`scripts/check_sensitive_data.py` runs as part of the quality gate, in two layers.
 
 **Structural** - shapes that are credentials whatever they contain: private key blocks,
 JWTs, cloud access keys, assigned secrets, and GitHub's token prefixes. Two rules cover
@@ -85,7 +85,7 @@ full of real values that Git happily tracks.
 ## Deliberately not implemented
 
 Writing GitHub Actions secrets. It requires NaCl sealed-box encryption against the
-repository public key; there is no pure PowerShell 5.1 implementation without a
+repository public key; the standard library has neither X25519 nor XSalsa20-Poly1305, so there is no implementation without a
 dependency, and it would violate *names, not values*.
 
 Branch protection has no `apply` and never will, in part because
