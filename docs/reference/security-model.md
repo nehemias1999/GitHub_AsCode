@@ -33,10 +33,14 @@ to `description` and `topics`.
 | `GITHUB_TOKEN_PROJECTS` | Projects: read (write from phase 5) | `project-board` only |
 
 Splitting them is not ceremony: it means `repo-standards` **cannot** touch a project
-board, and `project-board` cannot write a file. Only `repo-inventory` exists today, so
-only the first one needs a value.
+board, and `project-board` cannot write a file. Only `repo-inventory` and
+`repo-standards` exist today, and both read, so only the first one needs a value.
 
-Phase 1 needs `GITHUB_TOKEN_READ` and nothing else.
+Phases 1 and 2 need `GITHUB_TOKEN_READ` and nothing else. Phase 2 is what makes
+**Contents: read** load-bearing rather than merely listed: without it `repo-standards`
+reports every repository as `blocked`, because on GitHub a 404 means either "no such
+file" or "this token cannot see it" and reading the second as the first would produce a
+plan claiming files are missing that are simply out of view.
 
 ## Names, not values
 

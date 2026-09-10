@@ -25,13 +25,13 @@ diagram keeps quietly.
 flowchart TD
     subgraph entry [automations - one directory per resource family]
         RI[repo-inventory]
-        RS["repo-standards (phase 2)"]
+        RS[repo-standards]
         RM["repo-metadata (phase 3)"]
         PB["project-board (phase 5)"]
     end
     subgraph domain [foundation - domain modules]
         REPO[github_as_code.repository]
-        CONT["github_as_code.content (phase 2)"]
+        CONT[github_as_code.content]
         PROJ["github_as_code.projects (phase 5)"]
     end
     subgraph client [foundation - protocol clients]
@@ -43,7 +43,7 @@ flowchart TD
         PL[github_as_code.plan]
         RP[github_as_code.report]
     end
-    HTTP["github_as_code.http - the only Invoke-WebRequest"]
+    HTTP["github_as_code.http - the only urllib.request"]
 
     RI --> REPO
     RS --> CONT
@@ -52,6 +52,9 @@ flowchart TD
     RI --> PL
     RI --> RP
     RI --> CF
+    RS --> PL
+    RS --> RP
+    RS --> CF
     REPO --> REST
     REPO --> PL
     CONT --> REST
@@ -67,9 +70,9 @@ flowchart TD
 
 | Layer | Rule |
 | --- | --- |
-| `GitHubAsCode.*` | Cross-cutting. **Knows nothing about GitHub.** No URL, no endpoint, no permission name, no status code meaning. |
+| `github_as_code.configuration` / `.plan` / `.report` | Cross-cutting. **Knows nothing about GitHub.** No URL, no endpoint, no permission name, no status code meaning. |
 | `github_as_code.rest` / `github_as_code.graphql` | Protocol semantics: how a request is addressed, how a page is followed, how a failure is recognised. |
-| `github_as_code.repository` / `.Content` / `.Projects` | Domain rules, as pure functions over values. No network. |
+| `github_as_code.repository` / `.content` / `.projects` | Domain rules, as pure functions over values. No network. |
 | `automations/*` | Orchestration and reporting. Reuses the foundation; adds nothing domain-specific to it. |
 
 The moment the shared layer grows an `if this is a repository` branch, it has become a
@@ -83,8 +86,8 @@ version:
 
 What REST and GraphQL **share** is pure transport - the authorization header, retry,
 timeout, TLS floor, redirect refusal, the raw-bytes UTF-8 decode. That is cross-cutting,
-and it lives in `github_as_code.http`, which is the single file containing
-`Invoke-WebRequest`. One place to audit, and one place a write could ever be added.
+and it lives in `github_as_code.http`, which is the single file that imports
+`urllib.request`. One place to audit, and one place a write could ever be added.
 
 What **differs** is how a failure is recognised, and it is not a small difference:
 

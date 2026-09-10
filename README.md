@@ -56,7 +56,7 @@ documentation.
 
 | Principle | In practice |
 | --- | --- |
-| **Declare, then plan, then apply** | `plan` writes nothing. `apply` does not exist yet, and when it does it will need `-ConfirmApply` and will refuse a plan with any blocked operation |
+| **Declare, then plan, then apply** | `plan` writes nothing. `apply` does not exist yet, and when it does it will need `--confirm-apply` and will refuse a plan with any blocked operation |
 | **Never delete** | Every writer is additive. A collection is written as the **union** of live and declared, and the undeclared members are reported as preserved rather than removed |
 | **Names, not values** | The configuration declares the *name* of the environment variable holding a secret - and of the one holding the account login - so the whole declaration is committable |
 | **Idempotent by design** | A change is done when a second `plan` reports nothing pending. Drift is defined against the *payload that would be sent*, not against the declaration, which is what makes a second run a genuine no-op |
@@ -68,11 +68,12 @@ documentation.
 flowchart TD
     subgraph entry [automations - one per resource family]
         RI[repo-inventory]
-        RS["repo-standards (phase 2)"]
+        RS[repo-standards]
         RM["repo-metadata (phase 3)"]
     end
     subgraph domain [foundation - domain modules]
         REPO[github_as_code.repository]
+        CONT[github_as_code.content]
     end
     subgraph client [foundation - protocol clients]
         REST[github_as_code.rest]
@@ -83,13 +84,18 @@ flowchart TD
         PL[github_as_code.plan]
         RP[github_as_code.report]
     end
-    HTTP["github_as_code.http - the only Invoke-WebRequest"]
+    HTTP["github_as_code.http - the only urllib.request"]
 
     RI --> REPO
+    RS --> CONT
     RI --> PL
     RI --> RP
     RI --> CF
+    RS --> PL
+    RS --> RP
+    RS --> CF
     REPO --> REST
+    CONT --> REST
     REST --> HTTP
     GQL --> HTTP
 ```
@@ -107,10 +113,16 @@ See [docs/reference/architecture.md](docs/reference/architecture.md) and
 | Module | Owns | Guide |
 | --- | --- | --- |
 | `repo-inventory` | Every repository the account owns, and how live state differs from the declaration | [guide](automations/repo-inventory/README.md) |
+| `repo-standards` | Which files a repository of each class must have, and which are missing | [guide](automations/repo-standards/README.md) |
 
-Phases 2 to 5 add `repo-standards` (the files a repository of each class must have),
-`repo-metadata` (description, homepage, topics, labels), `repo-protection` (**plan-only,
-permanently**) and `project-board` (Projects v2, over GraphQL).
+`repo-standards` reports; it does not create. Which class a repository is in is declared
+**once**, in the `repo-inventory` declaration, and read from there - two files that must
+agree about that are two files that drift, and the drift would be silent.
+
+Phases 3 to 5 add `repo-metadata` (description, homepage, topics, labels),
+`repo-protection` (**plan-only, permanently**) and `project-board` (Projects v2, over
+GraphQL). Phase 4 adds `repo-standards apply`, which creates a missing file and never
+overwrites or removes one.
 
 Every module exposes the same ladder:
 
@@ -120,12 +132,13 @@ Every module exposes the same ladder:
 | `inventory` | Yes | No | - | Yes |
 | `plan` | Yes | No | - | Yes |
 | `smoke` | Yes | No | - | Yes |
-| `apply` | Yes | **Yes** | `-ConfirmApply` | Phase 3 |
+| `apply` | Yes | **Yes** | `--confirm-apply` | Phase 3 |
 
 **There is currently no code path that writes.** Not by convention:
-`github_as_code.http` has no `-Method` parameter, and an absence test walks the parse tree
-asserting the word appears as neither a parameter nor a hashtable key anywhere in the
-repository. Widening that is [ADR 0001](docs/adr/0001-write-boundary.md), not an edit.
+`github_as_code.http` is the only file that imports `urllib.request`, and an absence test
+walks the parse tree asserting that no call anywhere passes a body and that every
+`method=` is the literal `'GET'`. Widening that is
+[ADR 0001](docs/adr/0001-write-boundary.md), not an edit.
 
 ## Quickstart
 
@@ -206,9 +219,9 @@ tested range is not making the same claim as one running inside it.
   documented behaviours, each handled with a measured guard rather than a hopeful one,
   and each covered by a test that names the failure it prevents.
 - **Absence tested from the parse tree, not from text.** No write, no `DELETE`, no
-  `users/` path, no unbounded `ConvertTo-Json`, no hashtable key that looks like a
-  destructive `PATCH` field. A grep matches prose and misses a variable; `-Method $verb`
-  is how a write would actually arrive.
+  `users/` path, no dictionary key that looks like a destructive `PATCH` field. A grep
+  matches prose and misses a variable, and `Request(url, data=...)` - the write that
+  carries no method argument at all - is how one would actually arrive.
 - **Idempotency as a design constraint.** Drift is defined against the payload that
   would be sent, so a second run is a genuine no-op - and that is asserted offline from
   a fixture rather than promised in a document.

@@ -17,7 +17,7 @@ from github_as_code import configuration
 from support import REPO_ROOT
 
 CONTEXT_PATH = REPO_ROOT / "foundation/config/project-context.json"
-AUTOMATIONS = ("repo-inventory",)
+AUTOMATIONS = ("repo-inventory", "repo-standards")
 
 
 def project_context() -> dict:

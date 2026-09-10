@@ -10,10 +10,15 @@ and not a step-by-step extraction path.
 
 Currently: **nothing.** There is no code path that writes.
 
-That is not a convention. `github_as_code.http` has no `-Method` parameter, and
-`tests/python/test_write_boundary.py` walks the parse tree asserting the word
-`Method` appears as neither a command parameter nor a hashtable key anywhere in the
-repository. Widening it is [ADR 0001](docs/adr/0001-write-boundary.md).
+That is not a convention. `github_as_code.http` is the only file that imports
+`urllib.request`, and `tests/python/test_write_boundary.py` walks the parse tree
+asserting that no call anywhere passes a body and that every `method=` is the literal
+`'GET'`.
+
+Both halves are needed because in Python a write does not look like one:
+`Request(url, data=...)` promotes a GET to a POST from the presence of the body alone,
+with no method argument involved at all. Widening it is
+[ADR 0001](docs/adr/0001-write-boundary.md).
 
 `DELETE` never appears at all, at any phase.
 

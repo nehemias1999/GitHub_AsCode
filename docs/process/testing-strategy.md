@@ -178,8 +178,8 @@ conformance test and a passing one must not look alike.
 
 `tests/python/test_repo_inventory.py`. `validate` runs for real against the shipped
 template; the rungs that need an account run against a fake transport answering from the
-committed fixtures - the same fixtures the Pester suite uses, so both implementations are
-asked about the same bytes.
+committed fixtures - the ones both implementations were asked about while the parity
+instrument compared them, kept because a fixture is the only account a test can have.
 
 The assertions that matter are the negative ones: `inventory` must not consult the
 declaration, a filtered run must not answer about repositories nobody asked about, a

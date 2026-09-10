@@ -73,6 +73,34 @@ Also working as intended, and it is what a first run looks like. Nothing has dec
 anything yet. Derive the declaration from the report - step 6 of
 [getting-started.md](getting-started.md).
 
+## `repo-standards` reports every repository as blocked
+
+The token lacks **Contents: read**. `Metadata: read` alone lists every repository
+perfectly well and then answers 404 on every path inside them, and a 404 on GitHub means
+either "no such file" or "this token cannot see it".
+
+That is why the run says `blocked` rather than listing missing files: the repository root
+is listed first, and if that is refused nothing at all is claimed about the files. A run
+that read those 404s as absence would report twenty repositories lacking a README with
+nothing anywhere saying it could not look.
+
+Check `finding.unreadableCount` in the report. Above zero means the file verdicts below
+it are absent, not wrong. Add `Contents: read` to `GITHUB_TOKEN_READ` and re-run.
+
+## `repo-standards validate` names a class no standard describes
+
+Working as intended, and caught offline rather than partway through a live run. The
+repository-to-class mapping is read from the `repo-inventory` declaration, and a class
+used there with no standard here means every repository in it would be checked against
+nothing.
+
+Add the class to `standards.json`. An empty `requiredFiles` is a legitimate answer - it
+is exactly what `archived` declares, because an archived repository refuses every write
+and a missing file there would become a pending operation that can never be applied.
+
+The other direction is not an error: a standard for a class nothing uses yet is a
+decision written down early.
+
 ## Plan reports the same change on every run
 
 An idempotency failure, and always one of these:
@@ -94,7 +122,7 @@ each problem. Usually one of:
   cannot express
 - a topic that is not storable: uppercase is fine and normalised, but `c#` or a space
   is rejected rather than mangled into a topic nobody chose
-- a `-RepositoryName` naming something not declared, which would silently narrow the
+- a `--repository-name` naming something not declared, which would silently narrow the
   run to nothing
 
 ## The gate fails on a lint finding
@@ -137,8 +165,8 @@ carrying `INSUFFICIENT_SCOPES`. See row 9 of
 
 | What | Where |
 | --- | --- |
-| Report, machine-readable | `artifacts/repo-inventory/*.json` |
-| Report, readable | `artifacts/repo-inventory/*.md` |
+| Report, machine-readable | `artifacts/reports/<module>-<command>-<timestamp>Z-<id>.json` |
+| Report, readable | the `.md` sibling of that path |
 | Run transcript | the `runLog` path named in the report |
 
 All of `artifacts/` is excluded from version control.

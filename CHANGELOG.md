@@ -31,6 +31,51 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`repo-standards` - phase 2, and it still cannot write.** Reports which declared files
+  each repository is missing, judged against the standard for its class:
+  `automations/repo-standards/standards.py` with the same four-rung ladder as
+  `repo-inventory`, `src/github_as_code/content.py` as its domain half, a schema, a
+  versioned template, and a guide. There is no `apply` - not a disabled one, no such
+  subcommand. Phase 4 would add one, and it would create files and never overwrite or
+  remove one.
+
+  **A 404 is not an absence, and this phase is where that stops being theory.** GitHub
+  answers 404 both for a file that does not exist and for one the token cannot see, so
+  "the README is missing" and "this token has no Contents: read" arrive identically - and
+  a fine-grained token with `Metadata: read` and without `Contents: read` lists every
+  repository perfectly well and then 404s on every path inside them. Read as absence, that
+  produces a plan claiming twenty repositories lack a README, with nothing anywhere saying
+  the run could not look.
+
+  So the repository root is listed **first**, once, and it is what establishes whether
+  contents are readable at all: refused, the repository is `blocked` and nothing is said
+  about its files; successful, and a 404 beneath it genuinely is absence. That is the
+  "absence established another way" that `allow_not_found` was documented as requiring,
+  and this is its first caller that establishes it. `finding.unreadableCount` is in the
+  report so an approver can tell the two apart without knowing any of this.
+
+  Fetching by **directory** rather than by file then makes the walk cheap as a consequence
+  of being correct: one request per repository plus one per distinct directory the
+  standards name, rather than one per declared file.
+
+- **The repository-to-class mapping is read, not restated.** `standards.json` names
+  classes and the files each requires; which repository is in which class is already
+  declared in the `repo-inventory` declaration, and `repo-standards` reads it from there.
+  Two files that must agree about the class of a repository are two files that drift, and
+  the drift is silent - a repository checked against the wrong standard produces a plan
+  that looks entirely reasonable. The consequence is enforced offline: every class the
+  inventory declaration uses must have a standard here, and `validate` says which do not.
+  The other direction is deliberately allowed - a standard for a class nothing uses yet is
+  a decision written down early.
+
+- The CI step that proves an automation validates offline now runs for **both**
+  automations against their shipped templates, and `README.md`,
+  `docs/overview/capabilities.md`, `docs/reference/architecture.md`,
+  `docs/reference/security-model.md` and `docs/README.md` describe phase 2 as shipped
+  rather than as coming. Two troubleshooting entries are new, both for symptoms this phase
+  invents: every repository reported `blocked` because the token is short `Contents: read`,
+  and a class no standard describes.
+
 - **`scripts/bootstrap.py`** - the workstation setup, ported. It restricts the new `.env`
   with `chmod 0600` where the platform has it and `icacls` on Windows, best-effort and
   saying which happened, for the reason the PowerShell version measured: a hardening step
@@ -220,6 +265,51 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   it. The decision itself is unchanged.
 
 ### Fixed
+
+- **The documented way to create your configuration deleted a file CI depends on.**
+  Four places said to produce the active declaration by *moving* the template -
+  "move it, do not copy it" - and two of them spelled the move as `Move-Item` with
+  backslash paths inside a ```bash fence, one with a PowerShell backtick continuation.
+
+  The stated reason was that a copy "invites a differently named file full of real
+  repository names that Git happily tracks". That reason is about a **third** file with
+  a name nothing excludes; it is not an argument against a copy to the excluded name,
+  which `.gitignore` covers exactly as well as a move does. Meanwhile the move itself
+  deletes `*.example.json` - a versioned file that the CI step *added in this same
+  release* runs `validate` against, and that is the shipped example's whole job. Found
+  by following the instruction.
+
+  Now: copy, keep the template, and the reason says what it is actually about.
+- **Fourteen documents still described the write boundary in PowerShell.** They said
+  `github_as_code.http` "has no `-Method` parameter" and that a test asserts the word
+  appears as neither a parameter nor a hashtable key - a claim about a language this
+  repository no longer contains, and a **weaker** claim than the guards actually make.
+  `test_write_boundary.py` was reshaped for Python when it was ported, because the write
+  vector is not the same one: `Request(url, data=...)` promotes a GET to a POST from the
+  presence of a body alone, with no method argument involved at all. So the guards assert
+  on the shape of the call - no body anywhere, every `method=` the literal `'GET'`, and
+  `urllib.request` imported by one file - and the documents now say that.
+
+  Along with it: `-ConfirmApply` / `-ConfirmReconcile` / `-RepositoryName` are written as
+  the POSIX flags they now are (`--repository-name` is a flag that exists today, so that
+  one was simply wrong); `GitHubAsCode.*` no longer names the cross-cutting layer;
+  `automation-contract.md` step 7 said to add a row to `$script:Automation`, and now names
+  `AUTOMATIONS` in `test_automation_contract.py` - the tuple this release actually
+  changed; the `Invoke-WebRequest` labels in both architecture diagrams read
+  `urllib.request`; `testing-strategy.md` no longer says the Pester suite shares the
+  fixtures, because there is no Pester suite; and the README's summary of the absence
+  tests no longer claims a `ConvertTo-Json` guard that was deliberately not ported.
+
+  The genuinely historical references are untouched - the ADRs, this changelog,
+  `port-status.md`, the `github-notes.md` ledger rows about PowerShell, and the comments
+  in `http.py` and `test_write_boundary.py` explaining why the guard set has the shape it
+  has. Those are the record of a decision; the rest were descriptions of the present that
+  had quietly stopped being true.
+- **`docs/guides/troubleshooting.md` named a directory that does not exist.** Its "where
+  the evidence is" table pointed at `artifacts/repo-inventory/*.json`, while reports have
+  been written to `artifacts/reports/` with the module and command in the file name since
+  `report_path` was ported. The one table a person reads while something is already wrong
+  is a poor place for a stale path.
 
 - **Report list order no longer depends on the machine's locale.** `Sort-Object` compares
   by the current culture and ignores case, so the same account produced a different report

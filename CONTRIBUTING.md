@@ -43,8 +43,8 @@ matters:
 
 1. **Write the template and its schema first.** The shape of the declaration is the
    design; writing the code first produces a declaration shaped like the implementation.
-2. Write the entry point. Reuse the foundation; add nothing GitHub-specific to
-   `GitHubAsCode.*`.
+2. Write the entry point. Reuse the foundation; add nothing GitHub-specific to the
+   cross-cutting modules.
 3. Register it in `foundation/config/project-context.json`.
 4. Add its active configuration file name to `.gitignore`.
 5. Write the guide, **including a rollback section**, and link it from `docs/README.md`.
@@ -71,7 +71,7 @@ values and makes idempotency assertable offline from a fixture.
 
 The absence tests are absolute, and they will occasionally reject something harmless.
 That happened during phase 1: the report detail had a field named `private`, which is a
-count, and the guard forbidding a hashtable key of that name rejected it. It was renamed
+count, and the guard forbidding a dictionary key of that name rejected it. It was renamed
 `privateCount`.
 
 **Rename your code. Do not add an exemption.** A guard with an exemption is a guard with

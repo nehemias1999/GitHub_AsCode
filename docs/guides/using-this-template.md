@@ -10,8 +10,9 @@ that reports zero pending.
 ## What you are getting
 
 A read-only inventory of a GitHub account, plus the scaffolding four more automations are
-meant to be built on. It **cannot write to GitHub** — `github_as_code.http` has no
-`-Method` parameter, and a test asserts the word appears nowhere in the repository.
+meant to be built on. It **cannot write to GitHub** — `github_as_code.http` is the only
+file that imports `urllib.request`, and a parse-tree test asserts no call anywhere passes
+a body and every `method=` is the literal `'GET'`.
 Widening that is [ADR 0001](../adr/0001-write-boundary.md), and it names the four files
 the change must touch together.
 
@@ -34,8 +35,8 @@ Six things carry a placeholder or somebody else's name. The genericity test
 | `CHANGELOG.md` | the `[0.1.0]` entry | It describes the template's own first release. Keep it as provenance, or replace it with your own first entry |
 | Repository description and topics | your new repository on GitHub | It has neither. Ironically, that is one of the findings this tool reports |
 
-Nothing else needs renaming. `GitHubAsCode.*` and `GitHub.*` are the product's module
-namespaces, not the author's.
+Nothing else needs renaming. `github_as_code.*` is the product's package name, not the
+author's.
 
 ## 2. Define your repository classes
 
@@ -90,13 +91,17 @@ automation exists to prevent.
 Then derive your declaration from the report rather than writing it by hand:
 
 ```bash
-Move-Item .\automations\repo-inventory\config\repositories.example.json `
-          .\automations\repo-inventory\config\repositories.json
+cp automations/repo-inventory/config/repositories.example.json \
+   automations/repo-inventory/config/repositories.json
 ```
 
-Move it, do not copy it. The active name is what `.gitignore` excludes; a copy
-invites a differently named file full of real repository names that Git happily tracks —
-and on an account with private repositories, the names alone are worth excluding.
+Copy it, and leave the template where it is. The active name is what `.gitignore`
+excludes, so the copy is safe — what is not safe is a **third, differently named** file
+full of real repository names, which Git tracks happily; on an account with private
+repositories the names alone are worth excluding.
+
+Do not move the template away. It is a versioned file that CI validates `validate`
+against, which is the shipped example's whole job.
 
 Edit it to describe what the report found, then:
 
@@ -139,7 +144,7 @@ The phases the documentation refers to:
 | Phase | Automation | Writes |
 | --- | --- | --- |
 | 1 | `repo-inventory` | No — this is what you have |
-| 2 | `repo-standards`, read-only | No |
+| 2 | `repo-standards`, read-only | No — this is what you have |
 | 3 | `repo-metadata` | **Yes** — the first writer, and the ADR 0001 boundary change |
 | 4 | `repo-standards apply`, `repo-protection` | Create-only / never |
 | 5 | `project-board` | Additive, over GraphQL |

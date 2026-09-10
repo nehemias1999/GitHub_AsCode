@@ -1,0 +1,32 @@
+{
+  "$schema": "../schemas/standards.schema.json",
+  "_readme": "Rename this file to standards.json - do not copy it. The active name is the one .gitignore excludes. Every class the repo-inventory declaration uses must appear here, because repo-standards reads the repository-to-class mapping from there rather than restating it: a mapping written in two files is a mapping that drifts, and the drift is silent.",
+  "classes": {
+    "service": {
+      "description": "A deployable service. Somebody on call has to be able to read it at 3am.",
+      "requiredFiles": [
+        { "path": "README.md", "reason": "what it is and how to run it" },
+        { "path": "LICENSE", "reason": "a repository with no licence is not reusable, even internally" },
+        { "path": ".gitignore", "reason": "the first commit is where a secret gets committed by accident" }
+      ]
+    },
+    "library": {
+      "description": "Code other repositories depend on.",
+      "requiredFiles": [
+        { "path": "README.md", "reason": "the interface, for somebody who will never read the source" },
+        { "path": "LICENSE", "reason": "a dependency with no licence cannot be taken" },
+        { "path": "CHANGELOG.md", "reason": "a consumer needs to know what changed between two versions" }
+      ]
+    },
+    "tool": {
+      "description": "Scripts and pipelines. Read by people who did not write them.",
+      "requiredFiles": [
+        { "path": "README.md", "reason": "what it does and what it touches" }
+      ]
+    },
+    "archived": {
+      "description": "Kept for the record and read-only. Requires nothing, on purpose: an archived repository refuses every write, so a standard that found a file missing would produce a pending operation that can never be applied - and a plan whose apply cannot succeed is not a plan. repo-inventory already reports archived state as skip/protected for the same reason.",
+      "requiredFiles": []
+    }
+  }
+}
